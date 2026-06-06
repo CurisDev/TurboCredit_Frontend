@@ -563,7 +563,7 @@ export default function App() {
       </div>
 
       {/* BottomNavBar (Mobile Only) */}
-      <nav className="fixed bottom-0 left-0 w-full lg:hidden bg-[#151b2d]/95 backdrop-blur-xl border-t border-white/10 flex justify-around items-center py-3 z-50">
+      <nav className="bottom-nav">
         <button 
           onClick={() => navigate('/simulator')}
           className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
