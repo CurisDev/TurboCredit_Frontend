@@ -40,41 +40,39 @@ export function LoginForm({ onSuccess, onToggleRegister, isBackendConnected }: L
     <div className="w-full flex flex-col items-center">
       {/* Logo Section */}
       <div className="mb-8 text-center">
-        <div className="w-24 h-24 mb-4 mx-auto p-2 bg-white/5 rounded-full border border-white/10 flex items-center justify-center">
+        <div className="logo-container">
           <img
             alt="TurboCredit Logo"
-            className="w-full h-full object-contain"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdhg8bROqj95IP6opXG7nLTUHfgkypZlmAI2Sx3LsPrBOM1bUPWLvo7bHHler5DjmQyMyG_dksBLP2CpGAHmHHKf0R6ciBFQ2Qds8AqH_Li0VrR1zI3dr8U7UBIM3cGIhx5m8i9JQCvojzFkoNEHEF7ajZBWDwtGqkub9B8B9woY7RW5-BXzVN0YIJclR0thbR3sPj7l40n-MZgdkk1WI0lBPEHsG9pZLPwHbD4LIEkZkZwcau4oHTXKvPyP2pdACkwHI"
           />
         </div>
-        <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight mb-1">
+        <h1 className="text-headline-lg text-on-surface mb-1">
           TurboCredit
         </h1>
-        <p className="font-body-sm text-body-sm text-on-surface-variant">
+        <p className="text-body-sm text-on-surface-variant">
           Accede a tu panel financiero inteligente
         </p>
       </div>
 
       {error && (
-        <div className="w-full mb-6 p-4 rounded-xl border border-rose-500/25 bg-rose-500/10 text-rose-300 text-xs font-bold flex items-center gap-2">
-          <span className="material-symbols-outlined text-sm">error</span>
+        <div className="alert-container error w-full mb-6">
+          <span className="material-symbols-outlined">error</span>
           <span>{error}</span>
         </div>
       )}
 
       {/* Login Form */}
-      <form onSubmit={handleSubmit} className="w-full space-y-6">
+      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-6">
         {/* Email Field */}
-        <div className="space-y-2">
-          <label className="font-label-bold text-label-bold text-on-surface-variant block ml-1" htmlFor="email">
+        <div className="form-group">
+          <label className="text-label-bold block" htmlFor="email">
             Correo Electrónico
           </label>
-          <div className="luminous-input flex items-center px-4 py-3 rounded-xl gap-3 group">
-            <span className="material-symbols-outlined text-outline group-focus-within:text-primary transition-colors" style={{ fontSize: '20px' }}>
+          <div className="luminous-input flex items-center pl-4 gap-2">
+            <span className="material-symbols-outlined text-outline" style={{ fontSize: '20px' }}>
               mail
             </span>
             <input
-              className="bg-transparent border-none focus:ring-0 text-on-surface font-body-md text-body-md w-full placeholder:text-outline/50 outline-none"
               id="email"
               placeholder="nombre@empresa.com"
               type="email"
@@ -86,18 +84,15 @@ export function LoginForm({ onSuccess, onToggleRegister, isBackendConnected }: L
         </div>
 
         {/* Password Field */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center px-1">
-            <label className="font-label-bold text-label-bold text-on-surface-variant" htmlFor="password">
-              Contraseña
-            </label>
-          </div>
-          <div className="luminous-input flex items-center px-4 py-3 rounded-xl gap-3 group">
-            <span className="material-symbols-outlined text-outline group-focus-within:text-primary transition-colors" style={{ fontSize: '20px' }}>
+        <div className="form-group">
+          <label className="text-label-bold block" htmlFor="password">
+            Contraseña
+          </label>
+          <div className="luminous-input flex items-center pl-4 gap-2">
+            <span className="material-symbols-outlined text-outline" style={{ fontSize: '20px' }}>
               lock
             </span>
             <input
-              className="bg-transparent border-none focus:ring-0 text-on-surface font-body-md text-body-md w-full placeholder:text-outline/50 outline-none"
               id="password"
               placeholder="••••••••"
               type="password"
@@ -109,20 +104,19 @@ export function LoginForm({ onSuccess, onToggleRegister, isBackendConnected }: L
         </div>
 
         {/* Remember Me */}
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex items-center gap-2">
           <input
-            className="w-4 h-4 rounded border-white/10 bg-slate-900 text-primary focus:ring-primary focus:ring-offset-slate-950"
             id="remember"
             type="checkbox"
           />
-          <label className="font-body-sm text-body-sm text-on-surface-variant cursor-pointer" htmlFor="remember">
+          <label className="text-body-sm text-on-surface-variant cursor-pointer" htmlFor="remember">
             Mantener sesión iniciada
           </label>
         </div>
 
         {/* Submit Button */}
         <button
-          className="btn-primary-gradient w-full py-4 rounded-xl font-label-bold text-label-bold text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+          className="btn-primary-gradient w-full py-4 flex items-center justify-center gap-2"
           type="submit"
           disabled={loading}
         >
@@ -151,7 +145,7 @@ export function LoginForm({ onSuccess, onToggleRegister, isBackendConnected }: L
           ¿No tienes una cuenta?
           <button
             onClick={onToggleRegister}
-            className="font-label-bold text-label-bold text-secondary hover:underline ml-1 bg-transparent border-none cursor-pointer"
+            className="text-label-bold text-secondary hover:underline ml-1 bg-transparent border-none cursor-pointer"
           >
             Regístrate ahora
           </button>

@@ -97,7 +97,7 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
     return (
       <div className="w-full py-20 flex flex-col items-center justify-center">
         <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
         <span className="text-slate-400 text-sm">Cargando perfil del servidor...</span>
@@ -319,7 +319,7 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
                 <img
                   alt="Profile Large"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                  src="https://lh3.googleusercontent.com/aida/AP1WRLunjjlPwvIcYN6NgCJ4Rs95xaOfZSnG6TwAY1Tp5kIbv2wRJArrquX3NNFiddWzKKIdIndpmg-g7BdkKOT236c5XT1hcwHEDmCT2HWrvts2GzVcN6fjid34Mfrx3oiX5uvBrL2wAndemGQoA1xzw3Ug4a2iMoG7jUTPWcMyP4DUoNHrbD5ujZ_Gw-YpFZH5JaSKpoGSYm2wLEccKYIGnXv7MzH4PRKjXDb4lpScu7ucwlw65llIZ_IM1R42"
+                  src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profile.firstName || 'MC')}&backgroundColor=494bd6`}
                 />
               </div>
               <h3 className="font-headline-md text-headline-md text-on-surface">

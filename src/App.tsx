@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 
 // Shared
 import { Alert } from './shared/components/Alert';
@@ -30,8 +31,8 @@ export default function App() {
   const [userName, setUserName] = useState<string | null>(localStorage.getItem('userName'));
   const [userId, setUserId] = useState<string | null>(localStorage.getItem('userId'));
   const [userEmail, setUserEmail] = useState<string | null>(localStorage.getItem('userEmail'));
-  const [isRegistering, setIsRegistering] = useState<boolean>(false);
-  const [activeView, setActiveView] = useState<'simulator' | 'history' | 'profile'>('simulator');
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // --- Estados del Simulador ---
   const [selectedBankId, setSelectedBankId] = useState<string>('bcp');
@@ -141,6 +142,7 @@ export default function App() {
     setUserName(name);
     setUserEmail(email);
     setUserId(uId);
+    navigate('/simulator');
   };
 
   const handleLogout = () => {
@@ -153,7 +155,7 @@ export default function App() {
     setUserEmail(null);
     setUserId(null);
     setHistory([]);
-    setActiveView('simulator');
+    navigate('/login');
   };
 
   // --- Guardar simulación ---
@@ -295,7 +297,7 @@ export default function App() {
 
   const handleLoadIntoSimulator = (sim: any) => {
     handleSelectHistory(sim);
-    setActiveView('simulator');
+    navigate('/simulator');
   };
 
   const handleProfileSave = (newFullName: string, newMonthlyIncome: number) => {
@@ -315,29 +317,39 @@ export default function App() {
   // --- VISTA DE LOGIN/REGISTRO ---
   if (!token) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[#0c1324] px-4 py-12 relative overflow-hidden font-body-md text-on-surface">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden text-on-surface" style={{ padding: '2rem 1rem' }}>
         {/* Glows */}
         <div className="ambient-glow -top-20 -left-20"></div>
         <div className="ambient-glow -bottom-20 -right-20" style={{ background: 'radial-gradient(circle, rgba(73, 75, 214, 0.15) 0%, transparent 70%)' }}></div>
 
-        <div className="w-full max-w-md glass-card rounded-2xl p-8 md:p-10 flex flex-col items-center relative z-10">
-          {isRegistering ? (
-            <RegisterForm 
-              onSuccess={() => setIsRegistering(false)}
-              onToggleLogin={() => setIsRegistering(false)}
-              isBackendConnected={isBackendConnected}
+        <div className="w-full max-w-md glass-card p-8 flex flex-col items-center relative z-10">
+          <Routes>
+            <Route 
+              path="/login" 
+              element={
+                <LoginForm 
+                  onSuccess={handleAuthSuccess}
+                  onToggleRegister={() => navigate('/register')}
+                  isBackendConnected={isBackendConnected}
+                />
+              } 
             />
-          ) : (
-            <LoginForm 
-              onSuccess={handleAuthSuccess}
-              onToggleRegister={() => setIsRegistering(true)}
-              isBackendConnected={isBackendConnected}
+            <Route 
+              path="/register" 
+              element={
+                <RegisterForm 
+                  onSuccess={() => navigate('/login')}
+                  onToggleLogin={() => navigate('/login')}
+                  isBackendConnected={isBackendConnected}
+                />
+              } 
             />
-          )}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
         </div>
 
         {/* Server Status Banner */}
-        <footer className="fixed bottom-0 left-0 w-full server-banner py-3 px-margin-desktop z-20">
+        <footer className="fixed bottom-0 left-0 w-full server-banner py-3 px-6 z-20" style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}>
           <div className="max-w-container-max mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
@@ -345,18 +357,18 @@ export default function App() {
                   <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isBackendConnected ? 'bg-positive-emerald' : 'bg-warning-yellow'}`}></span>
                   <span className={`relative inline-flex rounded-full h-2 w-2 ${isBackendConnected ? 'bg-positive-emerald' : 'bg-warning-yellow'}`}></span>
                 </span>
-                <span className={`font-label-bold text-label-bold uppercase tracking-widest text-[10px] ${isBackendConnected ? 'bg-transparent text-positive-emerald' : 'text-warning-yellow'}`}>
+                <span className={`font-label-bold text-label-bold uppercase tracking-widest text-[10px] ${isBackendConnected ? 'text-positive-emerald' : 'text-warning-yellow'}`} style={{ fontSize: '10px', fontWeight: 'bold' }}>
                   {isBackendConnected ? 'Servidores Operativos' : 'Modo Demostración / Offline'}
                 </span>
               </div>
-              <div className="hidden md:block h-4 w-px bg-white/10"></div>
-              <p className="hidden md:block font-body-sm text-body-sm text-on-surface-variant opacity-70">
+              <div className="hidden md:block h-4 w-px bg-white/10" style={{ height: '16px', width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+              <p className="hidden md:block text-body-sm text-on-surface-variant opacity-70">
                 {isBackendConnected ? 'Base de datos PostgreSQL conectada (Puerto 8082)' : 'Usando LocalStorage local para simulaciones'}
               </p>
             </div>
             <div className="flex items-center gap-6">
-              <span className="font-label-bold text-label-bold text-on-surface-variant flex items-center gap-1 text-xs">
-                <span className="material-symbols-outlined text-[18px]">security</span>
+              <span className="text-label-bold text-on-surface-variant flex items-center gap-1 text-xs" style={{ fontWeight: 'bold', fontSize: '12px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>security</span>
                 <span>SBS Transparencia</span>
               </span>
             </div>
@@ -373,7 +385,7 @@ export default function App() {
       <nav className="top-nav">
         <div className="flex items-center gap-4 logo-mobile-only">
           <span 
-            onClick={() => setActiveView('simulator')} 
+            onClick={() => navigate('/simulator')} 
             className="text-headline-md text-secondary cursor-pointer bold"
           >
             TURBOCREDIT
@@ -383,11 +395,11 @@ export default function App() {
         <div className="flex items-center gap-4" style={{ marginLeft: 'auto' }}>
           {userName && <span className="text-body-sm text-slate-300 font-bold">Hola, {userName}</span>}
           <button 
-            onClick={() => setActiveView('profile')}
+            onClick={() => navigate('/profile')}
             className="btn-secondary px-4 py-2 text-body-sm flex items-center gap-2"
             title="Ver Perfil"
           >
-            <span className="material-symbols-outlined text-sm">person</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>person</span>
             <span className="text-body-sm">Perfil</span>
           </button>
         </div>
@@ -397,31 +409,31 @@ export default function App() {
         {/* SideNavBar (Desktop) */}
         <aside className="side-nav">
           <div className="mb-6 flex items-center gap-3">
-            <span className="material-symbols-outlined text-secondary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>speed</span>
+            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '30px', fontVariationSettings: "'FILL' 1" }}>speed</span>
             <div>
               <h3 className="text-headline-md text-white uppercase tracking-tight" style={{ fontSize: '1.25rem', fontWeight: 900 }}>TurboCredit</h3>
-              <p className="text-body-sm text-outline text-[10px] uppercase tracking-widest">Financial Intel</p>
+              <p className="text-body-sm text-outline uppercase tracking-widest" style={{ fontSize: '10px' }}>Financial Intel</p>
             </div>
           </div>
           
           <nav className="flex flex-col gap-2">
             <button 
-              onClick={() => setActiveView('simulator')}
-              className={`nav-link ${activeView === 'simulator' ? 'active' : ''}`}
+              onClick={() => navigate('/simulator')}
+              className={`nav-link ${location.pathname === '/simulator' ? 'active' : ''}`}
             >
               <span className="material-symbols-outlined">dashboard</span>
               <span>Simulador</span>
             </button>
             <button 
-              onClick={() => setActiveView('history')}
-              className={`nav-link ${activeView === 'history' ? 'active' : ''}`}
+              onClick={() => navigate('/history')}
+              className={`nav-link ${location.pathname === '/history' ? 'active' : ''}`}
             >
               <span className="material-symbols-outlined">history</span>
               <span>Historial Reciente</span>
             </button>
             <button 
-              onClick={() => setActiveView('profile')}
-              className={`nav-link ${activeView === 'profile' ? 'active' : ''}`}
+              onClick={() => navigate('/profile')}
+              className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}
             >
               <span className="material-symbols-outlined">person</span>
               <span>Perfil</span>
@@ -447,95 +459,105 @@ export default function App() {
           <div className="ambient-glow glow-bottom-right"></div>
 
           <div className="max-w-container-max relative z-10 pb-8">
-            {/* VIEW SWITCHER */}
-            {activeView === 'simulator' && (
-              <div className="space-y-10">
-                <header>
-                  <h1 className="font-headline-lg text-2xl md:text-3xl font-black text-white m-0">Simulador de Crédito Vehicular</h1>
-                  <p className="font-body-md text-slate-400 mt-2">Analiza y proyecta tu inversión con precisión financiera bajo el método de Compra Inteligente.</p>
-                </header>
+            <Routes>
+              <Route 
+                path="/simulator" 
+                element={
+                  <div className="flex flex-col gap-6">
+                    <header>
+                      <h1 className="text-headline-lg font-bold text-white m-0" style={{ fontSize: '2rem' }}>Simulador de Crédito Vehicular</h1>
+                      <p className="text-body-sm text-slate-400 mt-2">Analiza y proyecta tu inversión con precisión financiera bajo el método de Compra Inteligente.</p>
+                    </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  {/* Left Column: Forms */}
-                  <div className="lg:col-span-5 space-y-6">
-                    <BankSelector 
-                      selectedBankId={selectedBankId} 
-                      onSelectBank={setSelectedBankId} 
-                    />
-                    <ClientForm 
-                      inputs={inputs} 
-                      onChangeInputs={setInputs} 
-                    />
-                    <VehicleForm 
-                      inputs={inputs} 
-                      onChangeInputs={setInputs} 
-                    />
-                    <FinancialForm 
-                      inputs={inputs} 
-                      onChangeInputs={setInputs}
-                      onSelectCustomBank={() => setSelectedBankId('custom')}
-                    />
-                  </div>
-
-                  {/* Right Column: Results */}
-                  <div className="lg:col-span-7 space-y-8">
-                    {results && <MetricsPanel results={results} />}
-
-                    {/* GUARDAR SIMULACIÓN BANNER */}
-                    <div className="flex flex-col sm:flex-row gap-4 items-center justify-between glass-panel p-6 rounded-3xl">
-                      <div className="text-sm">
-                        <span className="text-slate-400 block text-xs uppercase font-bold tracking-wider mb-1">Monto del Préstamo a Financiar</span>
-                        <strong className="text-white text-lg font-black">{fmtCurrency(inputs.vehiclePrice - inputs.downPayment)}</strong>
+                    <div className="grid grid-cols-12 gap-8">
+                      {/* Left Column: Forms */}
+                      <div className="col-span-5 flex flex-col gap-6">
+                        <BankSelector 
+                          selectedBankId={selectedBankId} 
+                          onSelectBank={setSelectedBankId} 
+                        />
+                        <ClientForm 
+                          inputs={inputs} 
+                          onChangeInputs={setInputs} 
+                        />
+                        <VehicleForm 
+                          inputs={inputs} 
+                          onChangeInputs={setInputs} 
+                        />
+                        <FinancialForm 
+                          inputs={inputs} 
+                          onChangeInputs={setInputs}
+                          onSelectCustomBank={() => setSelectedBankId('custom')}
+                        />
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={handleSaveSimulation}
-                        className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs"
-                      >
-                        <span className="material-symbols-outlined text-sm">save</span>
-                        <span>Guardar Simulación</span>
-                      </button>
+                      {/* Right Column: Results */}
+                      <div className="col-span-7 flex flex-col gap-6">
+                        {results && <MetricsPanel results={results} />}
+
+                        {/* GUARDAR SIMULACIÓN BANNER */}
+                        <div className="flex justify-between items-center glass-panel p-6 rounded-3xl gap-4">
+                          <div className="text-sm">
+                            <span className="text-slate-400 block uppercase font-bold tracking-wider mb-1" style={{ fontSize: '10px' }}>Monto del Préstamo a Financiar</span>
+                            <strong className="text-white text-lg font-bold" style={{ fontSize: '1.25rem' }}>{fmtCurrency(inputs.vehiclePrice - inputs.downPayment)}</strong>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleSaveSimulation}
+                            className="btn-primary-gradient px-6 py-3 flex items-center justify-center gap-2"
+                            style={{ fontSize: '0.75rem' }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>save</span>
+                            <span>Guardar Simulación</span>
+                          </button>
+                        </div>
+
+                        {saveStatus && (
+                          <Alert type={saveStatus.type === 'loading' ? 'info' : saveStatus.type}>
+                            {saveStatus.message}
+                          </Alert>
+                        )}
+                      </div>
                     </div>
 
-                    {saveStatus && (
-                      <Alert type={saveStatus.type === 'loading' ? 'info' : saveStatus.type}>
-                        {saveStatus.message}
-                      </Alert>
+                    {results && (
+                      <div className="mt-4">
+                        <ScheduleTable 
+                          results={results}
+                          termMonths={inputs.termMonths}
+                          gracePeriodMonths={inputs.gracePeriodMonths}
+                          residualPercentage={inputs.residualPercentage}
+                        />
+                      </div>
                     )}
                   </div>
-                </div>
-
-                {results && (
-                  <div className="mt-4">
-                    <ScheduleTable 
-                      results={results}
-                      termMonths={inputs.termMonths}
-                      gracePeriodMonths={inputs.gracePeriodMonths}
-                      residualPercentage={inputs.residualPercentage}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeView === 'history' && (
-              <HistoryView 
-                history={history}
-                selectedHistoryId={selectedHistoryId}
-                onSelectHistory={handleSelectHistory}
-                onLoadIntoSimulator={handleLoadIntoSimulator}
+                } 
               />
-            )}
-
-            {activeView === 'profile' && (
-              <ProfileForm 
-                token={token}
-                userId={userId || ''}
-                userEmail={userEmail || ''}
-                onProfileSave={handleProfileSave}
+              <Route 
+                path="/history" 
+                element={
+                  <HistoryView 
+                    history={history}
+                    selectedHistoryId={selectedHistoryId}
+                    onSelectHistory={handleSelectHistory}
+                    onLoadIntoSimulator={handleLoadIntoSimulator}
+                  />
+                } 
               />
-            )}
+              <Route 
+                path="/profile" 
+                element={
+                  <ProfileForm 
+                    token={token}
+                    userId={userId || ''}
+                    userEmail={userEmail || ''}
+                    onProfileSave={handleProfileSave}
+                  />
+                } 
+              />
+              <Route path="*" element={<Navigate to="/simulator" replace />} />
+            </Routes>
           </div>
         </main>
       </div>
@@ -543,31 +565,31 @@ export default function App() {
       {/* BottomNavBar (Mobile Only) */}
       <nav className="fixed bottom-0 left-0 w-full lg:hidden bg-[#151b2d]/95 backdrop-blur-xl border-t border-white/10 flex justify-around items-center py-3 z-50">
         <button 
-          onClick={() => setActiveView('simulator')}
+          onClick={() => navigate('/simulator')}
           className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-            activeView === 'simulator' ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'
+            location.pathname === '/simulator' ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'
           }`}
         >
-          <span className="material-symbols-outlined" style={activeView === 'simulator' ? { fontVariationSettings: "'FILL' 1" } : undefined}>dashboard</span>
-          <span className="text-[10px] font-label-bold uppercase">Simulador</span>
+          <span className="material-symbols-outlined" style={location.pathname === '/simulator' ? { fontVariationSettings: "'FILL' 1" } : undefined}>dashboard</span>
+          <span className="text-[10px] font-label-bold uppercase" style={{ fontSize: '10px', fontWeight: 'bold' }}>Simulador</span>
         </button>
         <button 
-          onClick={() => setActiveView('history')}
+          onClick={() => navigate('/history')}
           className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-            activeView === 'history' ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'
+            location.pathname === '/history' ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'
           }`}
         >
-          <span className="material-symbols-outlined" style={activeView === 'history' ? { fontVariationSettings: "'FILL' 1" } : undefined}>history</span>
-          <span className="text-[10px] font-label-bold uppercase">Historial</span>
+          <span className="material-symbols-outlined" style={location.pathname === '/history' ? { fontVariationSettings: "'FILL' 1" } : undefined}>history</span>
+          <span className="text-[10px] font-label-bold uppercase" style={{ fontSize: '10px', fontWeight: 'bold' }}>Historial</span>
         </button>
         <button 
-          onClick={() => setActiveView('profile')}
+          onClick={() => navigate('/profile')}
           className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-            activeView === 'profile' ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'
+            location.pathname === '/profile' ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'
           }`}
         >
-          <span className="material-symbols-outlined" style={activeView === 'profile' ? { fontVariationSettings: "'FILL' 1" } : undefined}>person</span>
-          <span className="text-[10px] font-label-bold uppercase">Perfil</span>
+          <span className="material-symbols-outlined" style={location.pathname === '/profile' ? { fontVariationSettings: "'FILL' 1" } : undefined}>person</span>
+          <span className="text-[10px] font-label-bold uppercase" style={{ fontSize: '10px', fontWeight: 'bold' }}>Perfil</span>
         </button>
       </nav>
     </div>
