@@ -71,7 +71,7 @@ export function ScheduleTable({
                 <td className="text-right text-outline">{fmtCurrency(item.lifeInsurance)}</td>
                 <td className="text-right text-outline">{fmtCurrency(item.vehicularInsurance)}</td>
                 <td className="text-right text-outline">
-                  {fmtCurrency(item.portes + item.administrationFee)}
+                  {fmtCurrency(item.portes)}
                 </td>
                 <td className="text-right">
                   <span className="rounded-md inline-block px-2 py-1 border border-white/10" style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>

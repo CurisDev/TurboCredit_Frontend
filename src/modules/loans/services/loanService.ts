@@ -30,9 +30,6 @@ export const loanService = {
         seguroDesgravamenRate: inputs.seguroDesgravamenRate,
         seguroVehicularMonthly: inputs.seguroVehicularMonthly,
         portes: inputs.portes,
-        gastosAdministrativos: inputs.gastosAdministrativos,
-        comisionDesembolso: inputs.comisionDesembolso,
-        comisionEvaluacion: inputs.comisionEvaluacion,
         cok: inputs.cok
       })
     });

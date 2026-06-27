@@ -13,9 +13,6 @@ export interface SimulatorInputs {
   seguroDesgravamenRate: number; // e.g. 0.05 (%)
   seguroVehicularMonthly: number; // e.g. 150
   portes: number; // e.g. 15
-  gastosAdministrativos: number; // e.g. 30
-  comisionDesembolso: number; // e.g. 500
-  comisionEvaluacion: number; // e.g. 265
   cok: number; // e.g. 10.0 (%) - COK anual
 }
 
@@ -29,7 +26,6 @@ export interface ScheduleItem {
   lifeInsurance: number; // seguro desgravamen
   vehicularInsurance: number;
   portes: number;
-  administrationFee: number;
   totalInstallment: number; // cuota total
   remainingBalance: number;
   isGracePeriod: boolean;
@@ -102,8 +98,7 @@ export const vehicleCreditCalculator = {
       const lifeInsurance = round(remainingBalance * desgravamenRateDec); // sobre saldo capitalizado
       const vehicularInsurance = inputs.seguroVehicularMonthly;
       const portes = inputs.portes;
-      const adminFee = inputs.gastosAdministrativos;
-      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes + adminFee);
+      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes);
 
       const dueDate = new Date(today);
       dueDate.setMonth(today.getMonth() + period);
@@ -118,7 +113,6 @@ export const vehicleCreditCalculator = {
         lifeInsurance: round(lifeInsurance),
         vehicularInsurance: round(vehicularInsurance),
         portes: round(portes),
-        administrationFee: round(adminFee),
         totalInstallment: round(totalInstallment),
         remainingBalance: round(remainingBalance),
         isGracePeriod: true,
@@ -146,8 +140,7 @@ export const vehicleCreditCalculator = {
       const lifeInsurance = round(beginningBalance * desgravamenRateDec); // seguro sobre saldo inicial deudor del mes
       const vehicularInsurance = inputs.seguroVehicularMonthly;
       const portes = inputs.portes;
-      const adminFee = inputs.gastosAdministrativos;
-      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes + adminFee);
+      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes);
 
       const dueDate = new Date(today);
       dueDate.setMonth(today.getMonth() + period);
@@ -162,7 +155,6 @@ export const vehicleCreditCalculator = {
         lifeInsurance: round(lifeInsurance),
         vehicularInsurance: round(vehicularInsurance),
         portes: round(portes),
-        administrationFee: round(adminFee),
         totalInstallment: round(totalInstallment),
         remainingBalance: round(remainingBalance),
         isGracePeriod: false,
@@ -172,8 +164,8 @@ export const vehicleCreditCalculator = {
     }
 
     // 6. Calcular VAN, TIR, TCEA
-    // Inversión Inicial (desde el punto de vista del deudor): Préstamo recibido menos comisiones iniciales
-    const initialInflow = loanAmount - inputs.comisionDesembolso - inputs.comisionEvaluacion;
+    // Inversión Inicial (desde el punto de vista del deudor): Préstamo recibido
+    const initialInflow = loanAmount;
 
     const flows: number[] = [initialInflow];
     for (const item of schedule) {

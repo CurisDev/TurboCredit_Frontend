@@ -199,7 +199,7 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <Input
             id="portes"
             label="Portes (S/.)"
@@ -212,47 +212,12 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           />
 
           <Input
-            id="gastos-adm"
-            label="Gasto Adm. (S/.)"
-            type="number"
-            value={inputs.gastosAdministrativos}
-            onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, gastosAdministrativos: Number(e.target.value) }));
-              onSelectCustomBank();
-            }}
-          />
-
-          <Input
             id="cok-value"
             label="COK Anual (%)"
             type="number"
             step="0.1"
             value={inputs.cok}
             onChange={(e) => onChangeInputs(prev => ({ ...prev, cok: Number(e.target.value) }))}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            id="comision-desembolso"
-            label="Comisión Desembolso (S/.)"
-            type="number"
-            value={inputs.comisionDesembolso}
-            onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, comisionDesembolso: Number(e.target.value) }));
-              onSelectCustomBank();
-            }}
-          />
-
-          <Input
-            id="comision-evaluacion"
-            label="Comisión Evaluación (S/.)"
-            type="number"
-            value={inputs.comisionEvaluacion}
-            onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, comisionEvaluacion: Number(e.target.value) }));
-              onSelectCustomBank();
-            }}
           />
         </div>
       </div>

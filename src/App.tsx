@@ -51,9 +51,6 @@ export default function App() {
     seguroDesgravamenRate: 0.050,
     seguroVehicularMonthly: 150,
     portes: 15,
-    gastosAdministrativos: 30,
-    comisionDesembolso: 500,
-    comisionEvaluacion: 265,
     cok: 10.0,
     monthlyIncome: 6500,
   });
@@ -114,9 +111,6 @@ export default function App() {
         seguroDesgravamenRate: p.seguroDesgravamenRate * 100,
         seguroVehicularMonthly: p.seguroVehicularMonthly,
         portes: p.portes,
-        gastosAdministrativos: p.gastosAdministrativos,
-        comisionDesembolso: p.comisionDesembolso,
-        comisionEvaluacion: p.comisionEvaluacion,
         downPayment: downAmount,
         cok: p.cok * 100,
       }));
@@ -211,9 +205,6 @@ export default function App() {
           seguroDesgravamenRate: inputs.seguroDesgravamenRate,
           seguroVehicularMonthly: inputs.seguroVehicularMonthly,
           portes: inputs.portes,
-          gastosAdministrativos: inputs.gastosAdministrativos,
-          comisionDesembolso: inputs.comisionDesembolso,
-          comisionEvaluacion: inputs.comisionEvaluacion,
           cok: inputs.cok,
           createdAt: new Date().toISOString()
         };
@@ -252,9 +243,6 @@ export default function App() {
       seguroDesgravamenRate: sim.seguroDesgravamenRate || 0.05,
       seguroVehicularMonthly: sim.seguroVehicularMonthly || 150,
       portes: sim.portes || 15,
-      gastosAdministrativos: sim.gastosAdministrativos || 30,
-      comisionDesembolso: sim.comisionDesembolso || 500,
-      comisionEvaluacion: sim.comisionEvaluacion || 265,
       cok: sim.cok || 10.0,
       monthlyIncome: sim.monthlyIncome || 6500,
     });
@@ -282,7 +270,6 @@ export default function App() {
             lifeInsurance: item.lifeInsurance || 0,
             vehicularInsurance: item.vehicularInsurance || 0,
             portes: item.portes || 0,
-            administrationFee: item.administrationFee || 0,
             totalInstallment: item.totalInstallment || item.installment,
             remainingBalance: item.remainingBalance,
             isGracePeriod: item.isGracePeriod

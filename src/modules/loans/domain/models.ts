@@ -13,9 +13,6 @@ export interface SimulatorInputs {
   seguroDesgravamenRate: number;
   seguroVehicularMonthly: number;
   portes: number;
-  gastosAdministrativos: number;
-  comisionDesembolso: number;
-  comisionEvaluacion: number;
   cok: number;
   monthlyIncome: number;
 }
@@ -30,7 +27,6 @@ export interface ScheduleItem {
   lifeInsurance: number;
   vehicularInsurance: number;
   portes: number;
-  administrationFee: number;
   totalInstallment: number; // cuota total
   remainingBalance: number;
   isGracePeriod: boolean;
