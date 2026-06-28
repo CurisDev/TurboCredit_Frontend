@@ -56,15 +56,15 @@ export function HistoryView({
   return (
     <div className="flex flex-col gap-6">
       {/* Page Header */}
-      <section className="flex justify-between items-end gap-4" style={{ flexWrap: 'wrap' }}>
+      <section className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-headline-lg text-white">Historial de Simulaciones</h2>
           <p className="text-outline text-body-sm mt-1" style={{ maxWidth: '600px' }}>
             Revisa y compara tus cálculos previos para tomar la mejor decisión financiera.
           </p>
         </div>
-        <div className="flex gap-2 w-full" style={{ maxWidth: '300px' }}>
-          <div className="luminous-input flex items-center pl-4 w-full">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <div className="luminous-input flex items-center pl-4 w-full sm:w-[300px]">
             <span className="material-symbols-outlined text-outline">search</span>
             <input
               placeholder="Buscar cliente, DNI o auto..."
@@ -143,7 +143,12 @@ export function HistoryView({
         </div>
 
         {/* Detail View (Right Panel) - 7/12 span */}
-        <div className="col-span-7">
+        <div className="col-span-7 flex flex-col gap-4">
+          <div className="flex justify-between items-center px-2">
+            <span className="text-label-bold text-xs uppercase tracking-widest">
+              {selectedSim ? 'Análisis Financiero' : ' '}
+            </span>
+          </div>
           {selectedSim ? (
             <div className="glass-card flex flex-col" style={{ padding: 0, overflow: 'hidden' }}>
               {/* Detail Hero */}

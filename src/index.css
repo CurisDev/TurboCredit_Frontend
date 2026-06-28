@@ -1,3 +1,4 @@
+@import "tailwindcss";
 /* Global Reset and Typography Base */
 * {
   box-sizing: border-box;
@@ -367,9 +368,11 @@ input[type="range"]::-webkit-slider-thumb {
 
 .app-wrapper {
   margin-left: 256px;
+  width: calc(100% - 256px);
   margin-top: 72px;
   padding: 2.5rem;
   flex: 1;
+  overflow-x: hidden;
   min-height: calc(100vh - 72px);
   position: relative;
   z-index: 10;
@@ -715,4 +718,17 @@ input[type="range"]::-webkit-slider-thumb {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+@media (max-width: 1024px) {
+  .top-nav { left: 0; }
+  .side-nav { display: none !important; }
+  .app-wrapper { margin-left: 0; width: 100%; padding: 1.5rem; padding-bottom: 80px; margin-top: 72px; }
+  .bottom-nav { display: flex; }
+}
+
+@media (max-width: 480px) {
+  .hide-on-xs {
+    display: none !important;
+  }
 }

@@ -380,19 +380,17 @@ export default function App() {
         </div>
         
         <div className="flex items-center gap-4" style={{ marginLeft: 'auto' }}>
-          {userName && <span className="text-body-sm text-slate-300 font-bold">Hola, {userName}</span>}
+          {userName && <span className="text-body-sm text-slate-300 font-bold hide-on-xs">Hola, {userName}</span>}
           <button 
             onClick={() => navigate('/profile')}
-            className="btn-secondary px-4 py-2 text-body-sm flex items-center gap-2"
+            className="btn-secondary px-3 sm:px-4 py-2 text-body-sm flex items-center gap-2"
             title="Ver Perfil"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>person</span>
-            <span className="text-body-sm">Perfil</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>person</span>
+            <span className="text-body-sm hidden sm:block">Perfil</span>
           </button>
         </div>
       </nav>
-
-      <div className="flex">
         {/* SideNavBar (Desktop) */}
         <aside className="side-nav">
           <div className="mb-6 flex items-center gap-3">
@@ -440,7 +438,7 @@ export default function App() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="app-wrapper">
+        <main className="app-wrapper flex flex-col min-w-0">
           {/* Atmospheric Glow Background */}
           <div className="ambient-glow glow-top-left"></div>
           <div className="ambient-glow glow-bottom-right"></div>
@@ -456,9 +454,9 @@ export default function App() {
                       <p className="text-body-sm text-slate-400 mt-2">Analiza y proyecta tu inversión con precisión financiera bajo el método de Compra Inteligente.</p>
                     </header>
 
-                    <div className="grid grid-cols-12 gap-8">
+                    <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8">
                       {/* Left Column: Forms */}
-                      <div className="col-span-5 flex flex-col gap-6">
+                      <div className="lg:col-span-5 flex flex-col gap-6">
                         <BankSelector 
                           selectedBankId={selectedBankId} 
                           onSelectBank={setSelectedBankId} 
@@ -479,7 +477,7 @@ export default function App() {
                       </div>
 
                       {/* Right Column: Results */}
-                      <div className="col-span-7 flex flex-col gap-6">
+                      <div className="lg:col-span-7 flex flex-col gap-6">
                         {results && <MetricsPanel results={results} />}
 
                         {/* GUARDAR SIMULACIÓN BANNER */}
@@ -547,8 +545,6 @@ export default function App() {
             </Routes>
           </div>
         </main>
-      </div>
-
       {/* BottomNavBar (Mobile Only) */}
       <nav className="bottom-nav">
         <button 
