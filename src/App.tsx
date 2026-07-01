@@ -1,122 +1,580 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Shared
+import { Alert } from './shared/components/Alert';
 
+// IAM (Identity & Access Management)
+import { LoginForm } from './modules/iam/components/LoginForm';
+import { RegisterForm } from './modules/iam/components/RegisterForm';
+import { ProfileForm } from './modules/iam/components/ProfileForm';
+
+// Loans
+import { BankSelector } from './modules/loans/components/BankSelector';
+import { ClientForm } from './modules/loans/components/ClientForm';
+import { VehicleForm } from './modules/loans/components/VehicleForm';
+import { FinancialForm } from './modules/loans/components/FinancialForm';
+import { MetricsPanel } from './modules/loans/components/MetricsPanel';
+import { ScheduleTable } from './modules/loans/components/ScheduleTable';
+import { HistoryView } from './modules/loans/components/HistoryView';
+
+import type { SimulatorInputs, SimulatorResult } from './modules/loans/domain/models';
+import { loanService } from './modules/loans/services/loanService';
+import { vehicleCreditCalculator } from './utils/vehicleCreditCalculator';
+import { bankConfigurations } from './data/bankConfigurations';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082/api/v1';
+
+export default function App() {
+  // --- Estados de Autenticación ---
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [userName, setUserName] = useState<string | null>(localStorage.getItem('userName'));
+  const [userId, setUserId] = useState<string | null>(localStorage.getItem('userId'));
+  const [userEmail, setUserEmail] = useState<string | null>(localStorage.getItem('userEmail'));
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // --- Estados del Simulador ---
+  const [selectedBankId, setSelectedBankId] = useState<string>('bcp');
+  const [inputs, setInputs] = useState<SimulatorInputs>({
+    clientName: localStorage.getItem('userName') || 'Juan Pérez',
+    clientDni: '72345678',
+    vehicleBrand: 'Toyota',
+    vehicleModel: 'Corolla Hybrid',
+    vehiclePrice: 85000,
+    downPayment: 17000,
+    downPaymentPct: 20,
+    tea: 10.50,
+    termMonths: 24,
+    gracePeriodMonths: 2,
+    residualPercentage: 40,
+    seguroDesgravamenRate: 0.050,
+    seguroVehicularMonthly: 150,
+    portes: 15,
+    cok: 10.0,
+    monthlyIncome: 6500,
+  });
+
+  const [results, setResults] = useState<SimulatorResult | null>(null);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error' | 'loading'; message: string } | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null);
+
+  const roundValue = (val: number): number => Math.round(val * 100) / 100;
+
+  // --- Operaciones de Historial ---
+  const loadLocalStorageHistory = () => {
+    const localHistory = localStorage.getItem('local_simulations');
+    if (localHistory) {
+      setHistory(JSON.parse(localHistory));
+    }
+  };
+
+  const loadHistory = async () => {
+    if (!token) return;
+    try {
+      const data = await loanService.getHistory(token);
+      setHistory(data);
+    } catch (err) {
+      console.error('Error cargando historial de base de datos:', err);
+      loadLocalStorageHistory();
+    }
+  };
+
+  // --- Chequear estado de conexión del backend ---
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/auth/sign-in`, { method: 'OPTIONS' })
+      .then(() => setIsBackendConnected(true))
+      .catch(() => setIsBackendConnected(false));
+  }, []);
+
+  // --- Recalcular cada vez que cambian las entradas ---
+  useEffect(() => {
+    try {
+      const calcResult = vehicleCreditCalculator.calculate(inputs);
+      setResults(calcResult);
+    } catch (e: any) {
+      console.error(e.message);
+    }
+  }, [inputs]);
+
+  // --- Cargar configuraciones del banco seleccionado ---
+  useEffect(() => {
+    const bank = bankConfigurations.find(b => b.id === selectedBankId);
+    if (bank && selectedBankId !== 'custom') {
+      const p = bank.config;
+      const downAmount = roundValue(inputs.vehiclePrice * (inputs.downPaymentPct / 100));
+      setInputs(prev => ({
+        ...prev,
+        tea: p.tea * 100,
+        seguroDesgravamenRate: p.seguroDesgravamenRate * 100,
+        seguroVehicularMonthly: p.seguroVehicularMonthly,
+        portes: p.portes,
+        downPayment: downAmount,
+        cok: p.cok * 100,
+      }));
+    }
+  }, [selectedBankId]);
+
+  // --- Cargar historial al iniciar ---
+  useEffect(() => {
+    if (token) {
+      loadHistory();
+    } else {
+      loadLocalStorageHistory();
+    }
+  }, [token]);
+
+  // --- Manejador Login Exitoso ---
+  const handleAuthSuccess = (userToken: string, email: string, name: string, uId: string) => {
+    localStorage.setItem('token', userToken);
+    localStorage.setItem('userName', name);
+    localStorage.setItem('userEmail', email);
+    localStorage.setItem('userId', uId);
+    setToken(userToken);
+    setUserName(name);
+    setUserEmail(email);
+    setUserId(uId);
+    navigate('/simulator');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userId');
+    setToken(null);
+    setUserName(null);
+    setUserEmail(null);
+    setUserId(null);
+    setHistory([]);
+    navigate('/login');
+  };
+
+  // --- Guardar simulación ---
+  const handleSaveSimulation = async () => {
+    if (!results || !token) return;
+    setSaveStatus({ type: 'loading', message: 'Guardando simulación en PostgreSQL...' });
+
+    const selectedBankName = selectedBankId === 'custom' 
+      ? 'Personalizado' 
+      : bankConfigurations.find(b => b.id === selectedBankId)?.name || 'Desconocido';
+
+    try {
+      await loanService.saveCredit(token, inputs, selectedBankName);
+      setSaveStatus({ type: 'success', message: 'Simulación guardada exitosamente en la base de datos PostgreSQL del backend.' });
+      loadHistory();
+    } catch (err) {
+      console.error('Error al guardar en base de datos:', err);
+      
+      if (isBackendConnected) {
+        setSaveStatus({ 
+          type: 'error', 
+          message: 'Error de validación del Crédito en el servidor. Verifique si se incumplen las políticas de riesgo del banco (LTV > 90%, Cuota inicial < 10% del precio, o Relación Cuota/Ingreso > 40%).' 
+        });
+      } else {
+        // Fallback localstorage
+        const localSimulations = localStorage.getItem('local_simulations');
+        const sims = localSimulations ? JSON.parse(localSimulations) : [];
+        const newSim = {
+          id: Date.now(),
+          clientName: inputs.clientName,
+          clientDni: inputs.clientDni,
+          vehicleBrand: inputs.vehicleBrand,
+          vehicleModel: inputs.vehicleModel,
+          vehiclePrice: inputs.vehiclePrice,
+          downPayment: inputs.downPayment,
+          loanAmount: results.loanAmount,
+          interestRate: inputs.tea,
+          rateType: 'EFFECTIVE',
+          termMonths: inputs.termMonths,
+          gracePeriodMonths: inputs.gracePeriodMonths,
+          gracePeriodType: 'TOTAL',
+          currency: 'PEN',
+          bankName: selectedBankName,
+          tcea: results.tcea,
+          npv: results.npv,
+          irr: results.irr,
+          totalPaid: results.totalPaid,
+          totalInterestPaid: results.totalInterestPaid,
+          fixedInstallment: results.fixedInstallment,
+          residualValue: results.residualValue,
+          monthlyIncome: inputs.monthlyIncome,
+          residualPercentage: inputs.residualPercentage,
+          seguroDesgravamenRate: inputs.seguroDesgravamenRate,
+          seguroVehicularMonthly: inputs.seguroVehicularMonthly,
+          portes: inputs.portes,
+          cok: inputs.cok,
+          createdAt: new Date().toISOString()
+        };
+        
+        sims.unshift(newSim);
+        localStorage.setItem('local_simulations', JSON.stringify(sims));
+        setHistory(sims);
+        
+        setSaveStatus({ 
+          type: 'success', 
+          message: 'Simulación guardada localmente (Local Storage) debido a desconexión del servidor.' 
+        });
+      }
+    }
+
+    setTimeout(() => setSaveStatus(null), 8000);
+  };
+
+  // --- Cargar simulación del historial ---
+  const handleSelectHistory = async (sim: any) => {
+    setSelectedHistoryId(sim.id);
+    
+    // Rellenar entradas del simulador
+    setInputs({
+      clientName: sim.clientName || 'Cliente',
+      clientDni: sim.clientDni || '12345678',
+      vehicleBrand: sim.vehicleBrand || 'Marca',
+      vehicleModel: sim.vehicleModel || 'Modelo',
+      vehiclePrice: sim.vehiclePrice || 80000,
+      downPayment: sim.downPayment || 16000,
+      downPaymentPct: roundValue(((sim.downPayment || 16000) / (sim.vehiclePrice || 80000)) * 100),
+      tea: sim.interestRate || sim.tea || 10,
+      termMonths: sim.termMonths || 24,
+      gracePeriodMonths: sim.gracePeriodMonths || 0,
+      residualPercentage: sim.residualPercentage || 40,
+      seguroDesgravamenRate: sim.seguroDesgravamenRate || 0.05,
+      seguroVehicularMonthly: sim.seguroVehicularMonthly || 150,
+      portes: sim.portes || 15,
+      cok: sim.cok || 10.0,
+      monthlyIncome: sim.monthlyIncome || 6500,
+    });
+
+    // Detectar banco
+    const bank = bankConfigurations.find(b => b.name.toLowerCase() === (sim.bankName || '').toLowerCase());
+    if (bank) {
+      setSelectedBankId(bank.id);
+    } else {
+      setSelectedBankId('custom');
+    }
+
+    // Opcionalmente recuperar el cronograma exacto guardado del backend
+    if (isBackendConnected && token && typeof sim.id === 'number' && sim.id < 1000000000000) {
+      try {
+        const scheduleData = await loanService.getPaymentSchedule(token, sim.id);
+        if (scheduleData && scheduleData.scheduleItems && results) {
+          const dbItems = scheduleData.scheduleItems.map((item: any) => ({
+            period: item.period,
+            dueDate: new Date(item.dueDate).toLocaleDateString('es-PE'),
+            beginningBalance: item.remainingBalance + item.amortization,
+            interest: item.interest,
+            amortization: item.amortization,
+            installment: item.installment,
+            lifeInsurance: item.lifeInsurance || 0,
+            vehicularInsurance: item.vehicularInsurance || 0,
+            portes: item.portes || 0,
+            totalInstallment: item.totalInstallment || item.installment,
+            remainingBalance: item.remainingBalance,
+            isGracePeriod: item.isGracePeriod
+          }));
+          setResults(prev => prev ? ({ ...prev, schedule: dbItems }) : null);
+        }
+      } catch (err) {
+        console.error('Error recuperando cronograma de base de datos:', err);
+      }
+    }
+  };
+
+  const handleLoadIntoSimulator = (sim: any) => {
+    handleSelectHistory(sim);
+    navigate('/simulator');
+  };
+
+  const handleProfileSave = (newFullName: string, newMonthlyIncome: number) => {
+    localStorage.setItem('userName', newFullName);
+    setUserName(newFullName);
+    setInputs(prev => ({
+      ...prev,
+      clientName: newFullName,
+      monthlyIncome: newMonthlyIncome
+    }));
+  };
+
+  const fmtCurrency = (val: number) => {
+    return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(val);
+  };
+
+  // --- VISTA DE LOGIN/REGISTRO ---
+  if (!token) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden text-on-surface" style={{ padding: '2rem 1rem' }}>
+        {/* Glows */}
+        <div className="ambient-glow -top-20 -left-20"></div>
+        <div className="ambient-glow -bottom-20 -right-20" style={{ background: 'radial-gradient(circle, rgba(73, 75, 214, 0.15) 0%, transparent 70%)' }}></div>
+
+        <div className="w-full max-w-md glass-card p-8 flex flex-col items-center relative z-10">
+          <Routes>
+            <Route 
+              path="/login" 
+              element={
+                <LoginForm 
+                  onSuccess={handleAuthSuccess}
+                  onToggleRegister={() => navigate('/register')}
+                  isBackendConnected={isBackendConnected}
+                />
+              } 
+            />
+            <Route 
+              path="/register" 
+              element={
+                <RegisterForm 
+                  onSuccess={() => navigate('/login')}
+                  onToggleLogin={() => navigate('/login')}
+                  isBackendConnected={isBackendConnected}
+                />
+              } 
+            />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </div>
+
+        {/* Server Status Banner */}
+        <footer className="fixed bottom-0 left-0 w-full server-banner py-3 px-6 z-20" style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}>
+          <div className="max-w-container-max mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isBackendConnected ? 'bg-positive-emerald' : 'bg-warning-yellow'}`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isBackendConnected ? 'bg-positive-emerald' : 'bg-warning-yellow'}`}></span>
+                </span>
+                <span className={`font-label-bold text-label-bold uppercase tracking-widest text-[10px] ${isBackendConnected ? 'text-positive-emerald' : 'text-warning-yellow'}`} style={{ fontSize: '10px', fontWeight: 'bold' }}>
+                  {isBackendConnected ? 'Servidores Operativos' : 'Modo Demostración / Offline'}
+                </span>
+              </div>
+              <div className="hidden md:block h-4 w-px bg-white/10" style={{ height: '16px', width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+              <p className="hidden md:block text-body-sm text-on-surface-variant opacity-70">
+                {isBackendConnected ? 'Base de datos PostgreSQL conectada (Puerto 8082)' : 'Usando LocalStorage local para simulaciones'}
+              </p>
+            </div>
+            <div className="flex items-center gap-6">
+              <span className="text-label-bold text-on-surface-variant flex items-center gap-1 text-xs" style={{ fontWeight: 'bold', fontSize: '12px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>security</span>
+                <span>SBS Transparencia</span>
+              </span>
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  // --- VISTA DE DASHBOARD PRINCIPAL ---
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="min-h-screen">
+      {/* TopNavBar (Anchored header that always follows the user) */}
+      <nav className="top-nav">
+        <div className="flex items-center gap-4 logo-mobile-only">
+          <span 
+            onClick={() => navigate('/simulator')} 
+            className="text-headline-md text-secondary cursor-pointer bold"
+          >
+            TURBOCREDIT
+          </span>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+        
+        <div className="flex items-center gap-4" style={{ marginLeft: 'auto' }}>
+          {userName && <span className="text-body-sm text-slate-300 font-bold hide-on-xs">Hola, {userName}</span>}
+          <button 
+            onClick={() => navigate('/profile')}
+            className="btn-secondary px-3 sm:px-4 py-2 text-body-sm flex items-center gap-2"
+            title="Ver Perfil"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>person</span>
+            <span className="text-body-sm hidden sm:block">Perfil</span>
+          </button>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+      </nav>
+        {/* SideNavBar (Desktop) */}
+        <aside className="side-nav">
+          <div className="mb-6 flex items-center gap-3">
+            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '30px', fontVariationSettings: "'FILL' 1" }}>speed</span>
+            <div>
+              <h3 className="text-headline-md text-white uppercase tracking-tight" style={{ fontSize: '1.25rem', fontWeight: 900 }}>TurboCredit</h3>
+              <p className="text-body-sm text-outline uppercase tracking-widest" style={{ fontSize: '10px' }}>Financial Intel</p>
+            </div>
+          </div>
+          
+          <nav className="flex flex-col gap-2">
+            <button 
+              onClick={() => navigate('/simulator')}
+              className={`nav-link ${location.pathname === '/simulator' ? 'active' : ''}`}
+            >
+              <span className="material-symbols-outlined">dashboard</span>
+              <span>Simulador</span>
+            </button>
+            <button 
+              onClick={() => navigate('/history')}
+              className={`nav-link ${location.pathname === '/history' ? 'active' : ''}`}
+            >
+              <span className="material-symbols-outlined">history</span>
+              <span>Historial Reciente</span>
+            </button>
+            <button 
+              onClick={() => navigate('/profile')}
+              className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}
+            >
+              <span className="material-symbols-outlined">person</span>
+              <span>Perfil</span>
+            </button>
+          </nav>
+
+          <div className="mt-auto">
+            <button 
+              onClick={handleLogout}
+              className="nav-link"
+              style={{ color: '#f43f5e' }}
+            >
+              <span className="material-symbols-outlined">logout</span>
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="app-wrapper flex flex-col min-w-0">
+          {/* Atmospheric Glow Background */}
+          <div className="ambient-glow glow-top-left"></div>
+          <div className="ambient-glow glow-bottom-right"></div>
+
+          <div className="max-w-container-max relative z-10 pb-8">
+            <Routes>
+              <Route 
+                path="/simulator" 
+                element={
+                  <div className="flex flex-col gap-6">
+                    <header>
+                      <h1 className="text-headline-lg font-bold text-white m-0" style={{ fontSize: '2rem' }}>Simulador de Crédito Vehicular</h1>
+                      <p className="text-body-sm text-slate-400 mt-2">Analiza y proyecta tu inversión con precisión financiera bajo el método de Compra Inteligente.</p>
+                    </header>
+
+                    <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8">
+                      {/* Left Column: Forms */}
+                      <div className="lg:col-span-5 flex flex-col gap-6">
+                        <BankSelector 
+                          selectedBankId={selectedBankId} 
+                          onSelectBank={setSelectedBankId} 
+                        />
+                        <ClientForm 
+                          inputs={inputs} 
+                          onChangeInputs={setInputs} 
+                        />
+                        <VehicleForm 
+                          inputs={inputs} 
+                          onChangeInputs={setInputs} 
+                        />
+                        <FinancialForm 
+                          inputs={inputs} 
+                          onChangeInputs={setInputs}
+                          onSelectCustomBank={() => setSelectedBankId('custom')}
+                        />
+                      </div>
+
+                      {/* Right Column: Results */}
+                      <div className="lg:col-span-7 flex flex-col gap-6">
+                        {results && <MetricsPanel results={results} />}
+
+                        {/* GUARDAR SIMULACIÓN BANNER */}
+                        <div className="flex justify-between items-center glass-panel p-6 rounded-3xl gap-4">
+                          <div className="text-sm">
+                            <span className="text-slate-400 block uppercase font-bold tracking-wider mb-1" style={{ fontSize: '10px' }}>Monto del Préstamo a Financiar</span>
+                            <strong className="text-white text-lg font-bold" style={{ fontSize: '1.25rem' }}>{fmtCurrency(inputs.vehiclePrice - inputs.downPayment)}</strong>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleSaveSimulation}
+                            className="btn-primary-gradient px-6 py-3 flex items-center justify-center gap-2"
+                            style={{ fontSize: '0.75rem' }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>save</span>
+                            <span>Guardar Simulación</span>
+                          </button>
+                        </div>
+
+                        {saveStatus && (
+                          <Alert type={saveStatus.type === 'loading' ? 'info' : saveStatus.type}>
+                            {saveStatus.message}
+                          </Alert>
+                        )}
+                      </div>
+                    </div>
+
+                    {results && (
+                      <div className="mt-4">
+                        <ScheduleTable 
+                          results={results}
+                          termMonths={inputs.termMonths}
+                          gracePeriodMonths={inputs.gracePeriodMonths}
+                          residualPercentage={inputs.residualPercentage}
+                        />
+                      </div>
+                    )}
+                  </div>
+                } 
+              />
+              <Route 
+                path="/history" 
+                element={
+                  <HistoryView 
+                    history={history}
+                    selectedHistoryId={selectedHistoryId}
+                    onSelectHistory={handleSelectHistory}
+                    onLoadIntoSimulator={handleLoadIntoSimulator}
+                  />
+                } 
+              />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProfileForm 
+                    token={token}
+                    userId={userId || ''}
+                    userEmail={userEmail || ''}
+                    onProfileSave={handleProfileSave}
+                  />
+                } 
+              />
+              <Route path="*" element={<Navigate to="/simulator" replace />} />
+            </Routes>
+          </div>
+        </main>
+      {/* BottomNavBar (Mobile Only) */}
+      <nav className="bottom-nav">
+        <button 
+          onClick={() => navigate('/simulator')}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+            location.pathname === '/simulator' ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
         >
-          Count is {count}
+          <span className="material-symbols-outlined" style={location.pathname === '/simulator' ? { fontVariationSettings: "'FILL' 1" } : undefined}>dashboard</span>
+          <span className="text-[10px] font-label-bold uppercase" style={{ fontSize: '10px', fontWeight: 'bold' }}>Simulador</span>
         </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        <button 
+          onClick={() => navigate('/history')}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+            location.pathname === '/history' ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <span className="material-symbols-outlined" style={location.pathname === '/history' ? { fontVariationSettings: "'FILL' 1" } : undefined}>history</span>
+          <span className="text-[10px] font-label-bold uppercase" style={{ fontSize: '10px', fontWeight: 'bold' }}>Historial</span>
+        </button>
+        <button 
+          onClick={() => navigate('/profile')}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+            location.pathname === '/profile' ? 'text-secondary' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <span className="material-symbols-outlined" style={location.pathname === '/profile' ? { fontVariationSettings: "'FILL' 1" } : undefined}>person</span>
+          <span className="text-[10px] font-label-bold uppercase" style={{ fontSize: '10px', fontWeight: 'bold' }}>Perfil</span>
+        </button>
+      </nav>
+    </div>
+  );
 }
-
-export default App
