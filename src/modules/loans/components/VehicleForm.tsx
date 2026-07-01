@@ -13,7 +13,7 @@ export function VehicleForm({ inputs, onChangeInputs }: VehicleFormProps) {
     <Card className="flex flex-col gap-4">
       <h2 className="text-headline-md text-white flex items-center gap-2" style={{ fontSize: '1.25rem' }}>
         <Car className="text-primary" style={{ width: '20px', height: '20px' }} />
-        3. Datos del Vehículo
+        2. Datos del Vehículo
       </h2>
 
       <div className="grid grid-cols-2 gap-4">

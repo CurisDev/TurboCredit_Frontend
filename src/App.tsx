@@ -11,7 +11,6 @@ import { ProfileForm } from './modules/iam/components/ProfileForm';
 
 // Loans
 import { BankSelector } from './modules/loans/components/BankSelector';
-import { ClientForm } from './modules/loans/components/ClientForm';
 import { VehicleForm } from './modules/loans/components/VehicleForm';
 import { FinancialForm } from './modules/loans/components/FinancialForm';
 import { MetricsPanel } from './modules/loans/components/MetricsPanel';
@@ -29,24 +28,24 @@ export default function App() {
   // --- Estados de Autenticación ---
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [userName, setUserName] = useState<string | null>(localStorage.getItem('userName'));
-  const [userId, setUserId] = useState<string | null>(localStorage.getItem('userId'));
+  const [, setUserId] = useState<string | null>(localStorage.getItem('userId'));
   const [userEmail, setUserEmail] = useState<string | null>(localStorage.getItem('userEmail'));
   const navigate = useNavigate();
   const location = useLocation();
-  
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   // --- Estados del Simulador ---
   const [selectedBankId, setSelectedBankId] = useState<string>('bcp');
   const [inputs, setInputs] = useState<SimulatorInputs>({
-    clientName: localStorage.getItem('userName') || 'Juan Pérez',
-    clientDni: '72345678',
-    vehicleBrand: 'Toyota',
-    vehicleModel: 'Corolla Hybrid',
-    vehiclePrice: 85000,
-    downPayment: 17000,
+    clientName: localStorage.getItem('userName') || '',
+    vehicleBrand: '',
+    vehicleModel: '',
+    vehiclePrice: 0,
+    downPayment: 0,
     downPaymentPct: 20,
     tea: 10.50,
     termMonths: 24,
-    gracePeriodMonths: 2,
+    gracePeriodMonths: 0,
     residualPercentage: 40,
     seguroDesgravamenRate: 0.050,
     seguroVehicularMonthly: 150,
@@ -55,7 +54,6 @@ export default function App() {
     comisionDesembolso: 500,
     comisionEvaluacion: 265,
     cok: 10.0,
-    monthlyIncome: 6500,
   });
 
   const [results, setResults] = useState<SimulatorResult | null>(null);
@@ -94,11 +92,18 @@ export default function App() {
 
   // --- Recalcular cada vez que cambian las entradas ---
   useEffect(() => {
+    const loanAmount = inputs.vehiclePrice - inputs.downPayment;
+    // Solo calcular cuando hay un precio y un monto a financiar válidos
+    if (!inputs.vehiclePrice || inputs.vehiclePrice <= 0 || loanAmount <= 0) {
+      setResults(null);
+      return;
+    }
     try {
       const calcResult = vehicleCreditCalculator.calculate(inputs);
       setResults(calcResult);
     } catch (e: any) {
       console.error(e.message);
+      setResults(null);
     }
   }, [inputs]);
 
@@ -186,7 +191,6 @@ export default function App() {
         const newSim = {
           id: Date.now(),
           clientName: inputs.clientName,
-          clientDni: inputs.clientDni,
           vehicleBrand: inputs.vehicleBrand,
           vehicleModel: inputs.vehicleModel,
           vehiclePrice: inputs.vehiclePrice,
@@ -206,7 +210,6 @@ export default function App() {
           totalInterestPaid: results.totalInterestPaid,
           fixedInstallment: results.fixedInstallment,
           residualValue: results.residualValue,
-          monthlyIncome: inputs.monthlyIncome,
           residualPercentage: inputs.residualPercentage,
           seguroDesgravamenRate: inputs.seguroDesgravamenRate,
           seguroVehicularMonthly: inputs.seguroVehicularMonthly,
@@ -239,7 +242,6 @@ export default function App() {
     // Rellenar entradas del simulador
     setInputs({
       clientName: sim.clientName || 'Cliente',
-      clientDni: sim.clientDni || '12345678',
       vehicleBrand: sim.vehicleBrand || 'Marca',
       vehicleModel: sim.vehicleModel || 'Modelo',
       vehiclePrice: sim.vehiclePrice || 80000,
@@ -256,7 +258,6 @@ export default function App() {
       comisionDesembolso: sim.comisionDesembolso || 500,
       comisionEvaluacion: sim.comisionEvaluacion || 265,
       cok: sim.cok || 10.0,
-      monthlyIncome: sim.monthlyIncome || 6500,
     });
 
     // Detectar banco
@@ -300,13 +301,12 @@ export default function App() {
     navigate('/simulator');
   };
 
-  const handleProfileSave = (newFullName: string, newMonthlyIncome: number) => {
+  const handleProfileSave = (newFullName: string) => {
     localStorage.setItem('userName', newFullName);
     setUserName(newFullName);
     setInputs(prev => ({
       ...prev,
-      clientName: newFullName,
-      monthlyIncome: newMonthlyIncome
+      clientName: newFullName
     }));
   };
 
@@ -382,7 +382,7 @@ export default function App() {
   return (
     <div className="min-h-screen">
       {/* TopNavBar (Anchored header that always follows the user) */}
-      <nav className="top-nav">
+      <nav className={`top-nav ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="flex items-center gap-4 logo-mobile-only">
           <span 
             onClick={() => navigate('/simulator')} 
@@ -407,33 +407,48 @@ export default function App() {
 
       <div className="flex">
         {/* SideNavBar (Desktop) */}
-        <aside className="side-nav">
-          <div className="mb-6 flex items-center gap-3">
-            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '30px', fontVariationSettings: "'FILL' 1" }}>speed</span>
-            <div>
-              <h3 className="text-headline-md text-white uppercase tracking-tight" style={{ fontSize: '1.25rem', fontWeight: 900 }}>TurboCredit</h3>
-              <p className="text-body-sm text-outline uppercase tracking-widest" style={{ fontSize: '10px' }}>Financial Intel</p>
+        <aside className={`side-nav ${sidebarCollapsed ? 'collapsed' : ''}`}>
+          <div className="mb-6 flex items-center justify-between gap-3 side-brand">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-secondary" style={{ fontSize: '30px', fontVariationSettings: "'FILL' 1" }}>speed</span>
+              <div className="side-brand-text">
+                <h3 className="text-headline-md text-white uppercase tracking-tight" style={{ fontSize: '1.25rem', fontWeight: 900 }}>TurboCredit</h3>
+                <p className="text-body-sm text-outline uppercase tracking-widest" style={{ fontSize: '10px' }}>Financial Intel</p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(prev => !prev)}
+              className="sidebar-toggle"
+              title={sidebarCollapsed ? 'Expandir menú' : 'Contraer menú'}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+                {sidebarCollapsed ? 'chevron_right' : 'chevron_left'}
+              </span>
+            </button>
           </div>
-          
+
           <nav className="flex flex-col gap-2">
-            <button 
+            <button
               onClick={() => navigate('/simulator')}
               className={`nav-link ${location.pathname === '/simulator' ? 'active' : ''}`}
+              title="Simulador"
             >
               <span className="material-symbols-outlined">dashboard</span>
               <span>Simulador</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/history')}
               className={`nav-link ${location.pathname === '/history' ? 'active' : ''}`}
+              title="Historial Reciente"
             >
               <span className="material-symbols-outlined">history</span>
               <span>Historial Reciente</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/profile')}
               className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}
+              title="Perfil"
             >
               <span className="material-symbols-outlined">person</span>
               <span>Perfil</span>
@@ -441,10 +456,11 @@ export default function App() {
           </nav>
 
           <div className="mt-auto">
-            <button 
+            <button
               onClick={handleLogout}
               className="nav-link"
               style={{ color: '#f43f5e' }}
+              title="Cerrar Sesión"
             >
               <span className="material-symbols-outlined">logout</span>
               <span>Cerrar Sesión</span>
@@ -453,7 +469,7 @@ export default function App() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="app-wrapper">
+        <main className={`app-wrapper ${sidebarCollapsed ? 'collapsed' : ''}`}>
           {/* Atmospheric Glow Background */}
           <div className="ambient-glow glow-top-left"></div>
           <div className="ambient-glow glow-bottom-right"></div>
@@ -469,67 +485,66 @@ export default function App() {
                       <p className="text-body-sm text-slate-400 mt-2">Analiza y proyecta tu inversión con precisión financiera bajo el método de Compra Inteligente.</p>
                     </header>
 
-                    <div className="grid grid-cols-12 gap-8">
-                      {/* Left Column: Forms */}
-                      <div className="col-span-5 flex flex-col gap-6">
-                        <BankSelector 
-                          selectedBankId={selectedBankId} 
-                          onSelectBank={setSelectedBankId} 
+                    {/* Formularios de entrada */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                      <div className="flex flex-col gap-6">
+                        <BankSelector
+                          selectedBankId={selectedBankId}
+                          onSelectBank={setSelectedBankId}
                         />
-                        <ClientForm 
-                          inputs={inputs} 
-                          onChangeInputs={setInputs} 
-                        />
-                        <VehicleForm 
-                          inputs={inputs} 
-                          onChangeInputs={setInputs} 
-                        />
-                        <FinancialForm 
-                          inputs={inputs} 
+                        <VehicleForm
+                          inputs={inputs}
                           onChangeInputs={setInputs}
-                          onSelectCustomBank={() => setSelectedBankId('custom')}
                         />
                       </div>
-
-                      {/* Right Column: Results */}
-                      <div className="col-span-7 flex flex-col gap-6">
-                        {results && <MetricsPanel results={results} />}
-
-                        {/* GUARDAR SIMULACIÓN BANNER */}
-                        <div className="flex justify-between items-center glass-panel p-6 rounded-3xl gap-4">
-                          <div className="text-sm">
-                            <span className="text-slate-400 block uppercase font-bold tracking-wider mb-1" style={{ fontSize: '10px' }}>Monto del Préstamo a Financiar</span>
-                            <strong className="text-white text-lg font-bold" style={{ fontSize: '1.25rem' }}>{fmtCurrency(inputs.vehiclePrice - inputs.downPayment)}</strong>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={handleSaveSimulation}
-                            className="btn-primary-gradient px-6 py-3 flex items-center justify-center gap-2"
-                            style={{ fontSize: '0.75rem' }}
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>save</span>
-                            <span>Guardar Simulación</span>
-                          </button>
-                        </div>
-
-                        {saveStatus && (
-                          <Alert type={saveStatus.type === 'loading' ? 'info' : saveStatus.type}>
-                            {saveStatus.message}
-                          </Alert>
-                        )}
-                      </div>
+                      <FinancialForm
+                        inputs={inputs}
+                        onChangeInputs={setInputs}
+                        onSelectCustomBank={() => setSelectedBankId('custom')}
+                      />
                     </div>
 
-                    {results && (
-                      <div className="mt-4">
-                        <ScheduleTable 
-                          results={results}
-                          termMonths={inputs.termMonths}
-                          gracePeriodMonths={inputs.gracePeriodMonths}
-                          residualPercentage={inputs.residualPercentage}
-                        />
+                    {/* Resultados (debajo de los formularios) */}
+                    {results ? (
+                      <MetricsPanel results={results} />
+                    ) : (
+                      <div className="glass-panel p-6 rounded-3xl text-center text-slate-400 text-sm">
+                        Ingresa el precio del vehículo y la cuota inicial para ver los indicadores calculados (TCEA, VAN, TIR...).
                       </div>
+                    )}
+
+                    {/* GUARDAR SIMULACIÓN BANNER */}
+                    <div className="flex justify-between items-center glass-panel p-6 rounded-3xl gap-4" style={{ flexWrap: 'wrap' }}>
+                      <div className="text-sm">
+                        <span className="text-slate-400 block uppercase font-bold tracking-wider mb-1" style={{ fontSize: '10px' }}>Monto del Préstamo a Financiar</span>
+                        <strong className="text-white text-lg font-bold" style={{ fontSize: '1.25rem' }}>{fmtCurrency(Math.max(0, inputs.vehiclePrice - inputs.downPayment))}</strong>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSaveSimulation}
+                        disabled={!results}
+                        className="btn-primary-gradient px-6 py-3 flex items-center justify-center gap-2"
+                        style={{ fontSize: '0.75rem', opacity: results ? 1 : 0.5, cursor: results ? 'pointer' : 'not-allowed' }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>save</span>
+                        <span>Guardar Simulación</span>
+                      </button>
+                    </div>
+
+                    {saveStatus && (
+                      <Alert type={saveStatus.type === 'loading' ? 'info' : saveStatus.type}>
+                        {saveStatus.message}
+                      </Alert>
+                    )}
+
+                    {results && (
+                      <ScheduleTable
+                        results={results}
+                        termMonths={inputs.termMonths}
+                        gracePeriodMonths={inputs.gracePeriodMonths}
+                        residualPercentage={inputs.residualPercentage}
+                      />
                     )}
                   </div>
                 } 
@@ -548,9 +563,8 @@ export default function App() {
               <Route 
                 path="/profile" 
                 element={
-                  <ProfileForm 
+                  <ProfileForm
                     token={token}
-                    userId={userId || ''}
                     userEmail={userEmail || ''}
                     onProfileSave={handleProfileSave}
                   />

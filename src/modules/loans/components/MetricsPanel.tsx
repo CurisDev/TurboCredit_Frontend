@@ -14,7 +14,7 @@ export function MetricsPanel({ results }: MetricsPanelProps) {
   };
 
   return (
-    <div className="grid grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
       {/* TCEA */}
       <div className="m-card indigo flex flex-col justify-between shadow-lg">
         <span className="text-outline uppercase font-bold" style={{ fontSize: '10px', letterSpacing: '0.05em' }}>

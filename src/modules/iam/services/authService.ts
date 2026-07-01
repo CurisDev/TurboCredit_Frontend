@@ -16,10 +16,10 @@ export const authService = {
       throw new Error(err.message || 'Error al iniciar sesión.');
     }
 
-    return response.json(); // Retorna { token, email, id, fullName, roles }
+    return response.json(); // Retorna { id, email, firstName, lastName, token }
   },
 
-  signUp: async (email: string, password: string, fullName: string) => {
+  signUp: async (email: string, password: string, firstName: string, lastName: string) => {
     const response = await fetch(`${API_BASE_URL}/auth/sign-up`, {
       method: 'POST',
       headers: {
@@ -29,8 +29,8 @@ export const authService = {
       body: JSON.stringify({
         email,
         password,
-        fullName,
-        roles: ['ROLE_USER']
+        firstName,
+        lastName,
       }),
     });
 

@@ -47,7 +47,7 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
     <Card className="flex flex-col gap-4">
       <h2 className="text-headline-md text-white flex items-center gap-2" style={{ fontSize: '1.25rem' }}>
         <Coins className="text-primary" style={{ width: '20px', height: '20px' }} />
-        4. Condiciones del Crédito
+        3. Condiciones del Crédito
       </h2>
 
       {/* Precio y Cuota Inicial */}
@@ -57,7 +57,8 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           label="Precio del Vehículo (S/.)"
           type="number"
           min={1000}
-          value={inputs.vehiclePrice}
+          placeholder="Ej. 85000"
+          value={inputs.vehiclePrice || ''}
           onChange={(e) => handlePriceChange(Number(e.target.value))}
           className="bold text-white"
         />
@@ -67,7 +68,8 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           type="number"
           min={0}
           max={inputs.vehiclePrice}
-          value={inputs.downPayment}
+          placeholder="Ej. 17000"
+          value={inputs.downPayment || ''}
           onChange={(e) => handleDownAmountChange(Number(e.target.value))}
           className="bold text-white"
         />

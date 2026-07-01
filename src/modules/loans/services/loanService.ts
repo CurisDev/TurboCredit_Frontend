@@ -21,9 +21,7 @@ export const loanService = {
         currency: 'PEN',
         insuranceCost: 0,
         bankName: bankName,
-        monthlyIncome: inputs.monthlyIncome, // Validación de riesgo dinámica en el backend
         clientName: inputs.clientName,
-        clientDni: inputs.clientDni,
         vehicleBrand: inputs.vehicleBrand,
         vehicleModel: inputs.vehicleModel,
         residualPercentage: inputs.residualPercentage,

@@ -28,9 +28,8 @@ export function HistoryView({
     const brand = (sim.vehicleBrand || '').toLowerCase();
     const model = (sim.vehicleModel || '').toLowerCase();
     const client = (sim.clientName || '').toLowerCase();
-    const dni = (sim.clientDni || '').toLowerCase();
     const bank = (sim.bankName || '').toLowerCase();
-    return brand.includes(term) || model.includes(term) || client.includes(term) || dni.includes(term) || bank.includes(term);
+    return brand.includes(term) || model.includes(term) || client.includes(term) || bank.includes(term);
   });
 
   const selectedSim = history.find(sim => sim.id === selectedHistoryId) || history[0];
@@ -67,7 +66,7 @@ export function HistoryView({
           <div className="luminous-input flex items-center pl-4 w-full">
             <span className="material-symbols-outlined text-outline">search</span>
             <input
-              placeholder="Buscar cliente, DNI o auto..."
+              placeholder="Buscar cliente o auto..."
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -206,10 +205,6 @@ export function HistoryView({
                     <div className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                       <span className="text-outline">Cliente</span>
                       <span className="text-white font-bold">{selectedSim.clientName}</span>
-                    </div>
-                    <div className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                      <span className="text-outline">DNI Cliente</span>
-                      <span className="text-white font-bold">{selectedSim.clientDni}</span>
                     </div>
                     <div className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                       <span className="text-outline">Banco / Entidad</span>

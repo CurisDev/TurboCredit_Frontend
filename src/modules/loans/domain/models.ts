@@ -1,6 +1,5 @@
 export interface SimulatorInputs {
   clientName: string;
-  clientDni: string;
   vehicleBrand: string;
   vehicleModel: string;
   vehiclePrice: number;
@@ -17,7 +16,6 @@ export interface SimulatorInputs {
   comisionDesembolso: number;
   comisionEvaluacion: number;
   cok: number;
-  monthlyIncome: number;
 }
 
 export interface ScheduleItem {

@@ -1,6 +1,5 @@
 export interface SimulatorInputs {
   clientName: string;
-  clientDni: string;
   vehicleBrand: string;
   vehicleModel: string;
   vehiclePrice: number; // en Soles, e.g. 60000
