@@ -45,7 +45,7 @@ export function HistoryList({ history, selectedHistoryId, onSelectHistory }: His
                   {sim.vehicleBrand} {sim.vehicleModel}
                 </span>
                 <span className="text-[10px] text-slate-400 block">
-                  Cliente: {sim.clientName} | DNI: {sim.clientDni}
+                  Cliente: {sim.clientName}
                 </span>
                 <span className="text-[9px] text-slate-500 block">
                   Banco: {sim.bankName} • Plazo: {sim.termMonths} meses

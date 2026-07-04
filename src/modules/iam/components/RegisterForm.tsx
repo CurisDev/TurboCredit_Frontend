@@ -8,7 +8,8 @@ interface RegisterFormProps {
 }
 
 export function RegisterForm({ onSuccess, onToggleLogin, isBackendConnected }: RegisterFormProps) {
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export function RegisterForm({ onSuccess, onToggleLogin, isBackendConnected }: R
 
     try {
       if (isBackendConnected) {
-        await authService.signUp(email, password, fullName);
+        await authService.signUp(email, password, firstName, lastName);
         onSuccess();
       } else {
         // Fallback offline (simulado)
@@ -62,22 +63,42 @@ export function RegisterForm({ onSuccess, onToggleLogin, isBackendConnected }: R
 
       {/* Register Form */}
       <form onSubmit={handleSubmit} className="w-full flex flex-col gap-6">
-        {/* Full Name Field */}
+        {/* First Name Field */}
         <div className="form-group">
-          <label className="text-label-bold block" htmlFor="fullname">
-            Nombre Completo
+          <label className="text-label-bold block" htmlFor="firstname">
+            Nombres
           </label>
           <div className="luminous-input flex items-center pl-4 gap-2">
             <span className="material-symbols-outlined text-outline" style={{ fontSize: '20px' }}>
               person
             </span>
             <input
-              id="fullname"
-              placeholder="Juan Pérez"
+              id="firstname"
+              placeholder="Juan"
               type="text"
               required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Last Name Field */}
+        <div className="form-group">
+          <label className="text-label-bold block" htmlFor="lastname">
+            Apellidos
+          </label>
+          <div className="luminous-input flex items-center pl-4 gap-2">
+            <span className="material-symbols-outlined text-outline" style={{ fontSize: '20px' }}>
+              badge
+            </span>
+            <input
+              id="lastname"
+              placeholder="Pérez"
+              type="text"
+              required
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
             />
           </div>
         </div>

@@ -1,6 +1,5 @@
 export interface SimulatorInputs {
   clientName: string;
-  clientDni: string;
   vehicleBrand: string;
   vehicleModel: string;
   vehiclePrice: number; // en Soles, e.g. 60000
@@ -9,10 +8,14 @@ export interface SimulatorInputs {
   tea: number; // e.g. 10.50 (%)
   termMonths: number; // e.g. 24
   gracePeriodMonths: number; // e.g. 2
+  gracePeriodType: 'TOTAL' | 'PARTIAL'; // Total: capitaliza interés | Parcial: solo paga interés
   residualPercentage: number; // e.g. 40
   seguroDesgravamenRate: number; // e.g. 0.05 (%)
   seguroVehicularMonthly: number; // e.g. 150
   portes: number; // e.g. 15
+  gastosAdministrativos: number; // e.g. 30
+  comisionDesembolso: number; // e.g. 500
+  comisionEvaluacion: number; // e.g. 265
   cok: number; // e.g. 10.0 (%) - COK anual
 }
 
@@ -26,6 +29,7 @@ export interface ScheduleItem {
   lifeInsurance: number; // seguro desgravamen
   vehicularInsurance: number;
   portes: number;
+  administrationFee: number;
   totalInstallment: number; // cuota total
   remainingBalance: number;
   isGracePeriod: boolean;
@@ -56,13 +60,16 @@ export const vehicleCreditCalculator = {
 
     const g = inputs.gracePeriodMonths;
     const n = inputs.termMonths - g;
-    
+    const isTotalGrace = g > 0 && inputs.gracePeriodType === 'TOTAL';
+
     if (n <= 0) {
       throw new Error('El plazo total debe ser mayor a los meses de gracia');
     }
 
-    // 1. Capitalización durante gracia total: L_g = L_0 * (1 + TEM)^g
-    const l_g = loanAmount * Math.pow(1 + tem, g);
+    // 1. Base de cálculo de la cuota:
+    //    - Gracia TOTAL: el interés se capitaliza -> L_g = L_0 * (1 + TEM)^g
+    //    - Gracia PARCIAL o sin gracia: el saldo no crece -> L_g = L_0
+    const l_g = isTotalGrace ? loanAmount * Math.pow(1 + tem, g) : loanAmount;
 
     // 2. Cuota residual (Valor Residuo): VF = precioVehiculo * residualPct / 100
     const residualValue = round(inputs.vehiclePrice * (inputs.residualPercentage / 100));
@@ -85,20 +92,27 @@ export const vehicleCreditCalculator = {
     // Seguro de desgravamen rate mensual
     const desgravamenRateDec = inputs.seguroDesgravamenRate / 100;
 
-    // Períodos de gracia (Gracia Total)
+    // Períodos de gracia (Total o Parcial)
     for (let period = 1; period <= g; period++) {
       const beginningBalance = remainingBalance;
       const interest = round(beginningBalance * tem);
       const amortization = 0;
-      const installment = 0;
 
-      // El interés de gracia total capitaliza en el saldo deudor
-      remainingBalance = round(remainingBalance + interest);
+      let installment: number;
+      if (inputs.gracePeriodType === 'PARTIAL') {
+        // Gracia parcial: se paga solo el interés; el saldo deudor no cambia
+        installment = interest;
+      } else {
+        // Gracia total: no se paga nada; el interés se capitaliza en el saldo deudor
+        installment = 0;
+        remainingBalance = round(remainingBalance + interest);
+      }
 
-      const lifeInsurance = round(remainingBalance * desgravamenRateDec); // sobre saldo capitalizado
+      const lifeInsurance = round(remainingBalance * desgravamenRateDec); // sobre saldo del periodo
       const vehicularInsurance = inputs.seguroVehicularMonthly;
       const portes = inputs.portes;
-      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes);
+      const adminFee = inputs.gastosAdministrativos;
+      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes + adminFee);
 
       const dueDate = new Date(today);
       dueDate.setMonth(today.getMonth() + period);
@@ -113,6 +127,7 @@ export const vehicleCreditCalculator = {
         lifeInsurance: round(lifeInsurance),
         vehicularInsurance: round(vehicularInsurance),
         portes: round(portes),
+        administrationFee: round(adminFee),
         totalInstallment: round(totalInstallment),
         remainingBalance: round(remainingBalance),
         isGracePeriod: true,
@@ -140,7 +155,8 @@ export const vehicleCreditCalculator = {
       const lifeInsurance = round(beginningBalance * desgravamenRateDec); // seguro sobre saldo inicial deudor del mes
       const vehicularInsurance = inputs.seguroVehicularMonthly;
       const portes = inputs.portes;
-      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes);
+      const adminFee = inputs.gastosAdministrativos;
+      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes + adminFee);
 
       const dueDate = new Date(today);
       dueDate.setMonth(today.getMonth() + period);
@@ -155,6 +171,7 @@ export const vehicleCreditCalculator = {
         lifeInsurance: round(lifeInsurance),
         vehicularInsurance: round(vehicularInsurance),
         portes: round(portes),
+        administrationFee: round(adminFee),
         totalInstallment: round(totalInstallment),
         remainingBalance: round(remainingBalance),
         isGracePeriod: false,
@@ -164,8 +181,8 @@ export const vehicleCreditCalculator = {
     }
 
     // 6. Calcular VAN, TIR, TCEA
-    // Inversión Inicial (desde el punto de vista del deudor): Préstamo recibido
-    const initialInflow = loanAmount;
+    // Inversión Inicial (desde el punto de vista del deudor): Préstamo recibido menos comisiones iniciales
+    const initialInflow = loanAmount - inputs.comisionDesembolso - inputs.comisionEvaluacion;
 
     const flows: number[] = [initialInflow];
     for (const item of schedule) {

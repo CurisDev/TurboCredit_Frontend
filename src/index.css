@@ -1,5 +1,5 @@
-@import "tailwindcss";
 /* Global Reset and Typography Base */
+@import "tailwindcss";
 * {
   box-sizing: border-box;
   margin: 0;
@@ -328,15 +328,16 @@ input[type="range"]::-webkit-slider-thumb {
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2.5rem;
+  padding: 1rem 1.5rem;
   position: fixed;
   top: 0;
   left: 256px;
   right: 0;
   z-index: 50;
-  height: 72px;
+  min-height: 72px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
 }
 
@@ -368,14 +369,60 @@ input[type="range"]::-webkit-slider-thumb {
 
 .app-wrapper {
   margin-left: 256px;
-  width: calc(100% - 256px);
   margin-top: 72px;
   padding: 2.5rem;
   flex: 1;
-  overflow-x: hidden;
   min-height: calc(100vh - 72px);
   position: relative;
   z-index: 10;
+}
+
+/* Collapsible sidebar */
+.side-nav,
+.top-nav,
+.app-wrapper {
+  transition: width 0.25s ease, left 0.25s ease, margin-left 0.25s ease, padding 0.25s ease;
+}
+.side-nav.collapsed {
+  width: 76px;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+.side-nav.collapsed .nav-link span:not(.material-symbols-outlined),
+.side-nav.collapsed .side-brand-text {
+  display: none;
+}
+.side-nav.collapsed .nav-link {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+.side-nav.collapsed .side-brand {
+  justify-content: center;
+}
+.top-nav.collapsed {
+  left: 76px;
+}
+.app-wrapper.collapsed {
+  margin-left: 76px;
+}
+.sidebar-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #c7c4d7;
+  border-radius: 0.6rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
 }
 
 .nav-link {
@@ -432,8 +479,10 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* Table styling */
 .table-viewport {
-  overflow-x: auto;
+  overflow: auto;
+  min-width:0;
   width: 100%;
+  max-height: 480px;
 }
 .payment-table {
   width: 100%;
@@ -719,16 +768,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 100%;
   object-fit: contain;
 }
-
-@media (max-width: 1024px) {
-  .top-nav { left: 0; }
-  .side-nav { display: none !important; }
-  .app-wrapper { margin-left: 0; width: 100%; padding: 1.5rem; padding-bottom: 80px; margin-top: 72px; }
-  .bottom-nav { display: flex; }
-}
-
-@media (max-width: 480px) {
-  .hide-on-xs {
-    display: none !important;
-  }
+/* Evita que hijos de flex/grid se nieguen a encogerse por su contenido (tablas anchas, texto largo, etc.) */
+.flex > *, .grid > * {
+  min-width: 0;
 }

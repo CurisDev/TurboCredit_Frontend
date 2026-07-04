@@ -1,15 +1,18 @@
-import { Coins, Info } from 'lucide-react';
+import { Coins, Info, AlertTriangle } from 'lucide-react';
 import { Card } from '../../../shared/components/Card';
 import { Input } from '../../../shared/components/Input';
 import type { SimulatorInputs } from '../domain/models';
+import type { BankLimits } from '../../../data/bankConfigurations';
 
 interface FinancialFormProps {
   inputs: SimulatorInputs;
   onChangeInputs: (updater: (prev: SimulatorInputs) => SimulatorInputs) => void;
   onSelectCustomBank: () => void;
+  limits: BankLimits;
+  errors: string[];
 }
 
-export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: FinancialFormProps) {
+export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limits, errors }: FinancialFormProps) {
   const round = (val: number): number => Math.round(val * 100) / 100;
 
   const handlePriceChange = (price: number) => {
@@ -47,8 +50,25 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
     <Card className="flex flex-col gap-4">
       <h2 className="text-headline-md text-white flex items-center gap-2" style={{ fontSize: '1.25rem' }}>
         <Coins className="text-primary" style={{ width: '20px', height: '20px' }} />
-        4. Condiciones del Crédito
+        3. Condiciones del Crédito
       </h2>
+
+      {errors.length > 0 && (
+        <div
+          className="flex flex-col gap-1 p-3 rounded-xl"
+          style={{ background: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.25)' }}
+        >
+          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: '#f43f5e' }}>
+            <AlertTriangle style={{ width: '14px', height: '14px' }} />
+            Revisa las condiciones del banco
+          </span>
+          <ul className="list-disc pl-5 flex flex-col gap-0.5">
+            {errors.map((err, i) => (
+              <li key={i} className="text-xs" style={{ color: '#fda4af' }}>{err}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Precio y Cuota Inicial */}
       <div className="grid grid-cols-2 gap-4">
@@ -57,7 +77,8 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           label="Precio del Vehículo (S/.)"
           type="number"
           min={1000}
-          value={inputs.vehiclePrice}
+          placeholder="Ej. 85000"
+          value={inputs.vehiclePrice || ''}
           onChange={(e) => handlePriceChange(Number(e.target.value))}
           className="bold text-white"
         />
@@ -67,7 +88,8 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           type="number"
           min={0}
           max={inputs.vehiclePrice}
-          value={inputs.downPayment}
+          placeholder="Ej. 17000"
+          value={inputs.downPayment || ''}
           onChange={(e) => handleDownAmountChange(Number(e.target.value))}
           className="bold text-white"
         />
@@ -81,13 +103,17 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
         </div>
         <input
           type="range"
-          min={10}
-          max={50}
+          min={limits.minDownPaymentPct}
+          max={limits.maxDownPaymentPct}
           step={5}
           value={inputs.downPaymentPct}
           onChange={(e) => handleDownPctChange(Number(e.target.value))}
           className="cursor-pointer"
         />
+        <div className="flex justify-between text-[10px] text-outline opacity-60">
+          <span>Mín {limits.minDownPaymentPct}%</span>
+          <span>Máx {limits.maxDownPaymentPct}%</span>
+        </div>
       </div>
 
       {/* Slider de Cuota Final (Residual) */}
@@ -105,8 +131,8 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
         </div>
         <input
           type="range"
-          min={20}
-          max={50}
+          min={limits.minResidualPct}
+          max={limits.maxResidualPct}
           step={5}
           value={inputs.residualPercentage}
           onChange={(e) => {
@@ -115,6 +141,10 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           }}
           className="cursor-pointer"
         />
+        <div className="flex justify-between text-[10px] text-outline opacity-60">
+          <span>Mín {limits.minResidualPct}%</span>
+          <span>Máx {limits.maxResidualPct}%</span>
+        </div>
       </div>
 
       {/* Fila Plazos e Interés */}
@@ -130,15 +160,16 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
               onChange={(e) => onChangeInputs(prev => ({ ...prev, termMonths: Number(e.target.value) }))}
               style={{ width: '100%' }}
             >
-              <option value={24}>24 meses</option>
-              <option value={36}>36 meses</option>
+              {limits.terms.map((t) => (
+                <option key={t} value={t}>{t} meses</option>
+              ))}
             </select>
           </div>
         </div>
 
         <div className="form-group">
           <label htmlFor="grace-months" className="text-label-bold" style={{ fontSize: '11px' }}>
-            Gracia Total
+            Meses de Gracia
           </label>
           <div className="luminous-input">
             <select
@@ -148,9 +179,9 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
               style={{ width: '100%' }}
             >
               <option value={0}>Sin gracia</option>
-              <option value={1}>1 mes</option>
-              <option value={2}>2 meses</option>
-              <option value={3}>3 meses</option>
+              {Array.from({ length: limits.maxGraceMonths }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>{m} {m === 1 ? 'mes' : 'meses'}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -167,6 +198,32 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           }}
         />
       </div>
+
+      {/* Tipo de periodo de gracia (solo si hay meses de gracia) */}
+      {inputs.gracePeriodMonths > 0 && (
+        <div className="form-group">
+          <label htmlFor="grace-type" className="text-label-bold flex items-center gap-1.5" style={{ fontSize: '11px' }}>
+            Tipo de Periodo de Gracia
+            <span
+              title="Gracia Total: no se paga nada y el interés se capitaliza (aumenta la deuda). Gracia Parcial: se paga solo el interés y el capital no varía."
+              className="cursor-help flex items-center"
+            >
+              <Info className="text-outline" style={{ width: '14px', height: '14px' }} />
+            </span>
+          </label>
+          <div className="luminous-input">
+            <select
+              id="grace-type"
+              value={inputs.gracePeriodType}
+              onChange={(e) => onChangeInputs(prev => ({ ...prev, gracePeriodType: e.target.value as 'TOTAL' | 'PARTIAL' }))}
+              style={{ width: '100%' }}
+            >
+              <option value="TOTAL">Gracia Total (capitaliza el interés)</option>
+              <option value="PARTIAL">Gracia Parcial (paga solo el interés)</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* SECCIÓN DETALLES AVANZADOS (SEGUROS Y COMISIONES) */}
       <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '1.25rem' }} className="flex flex-col gap-4">
@@ -199,7 +256,7 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <Input
             id="portes"
             label="Portes (S/.)"
@@ -212,12 +269,47 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank }: Fi
           />
 
           <Input
+            id="gastos-adm"
+            label="Gasto Adm. (S/.)"
+            type="number"
+            value={inputs.gastosAdministrativos}
+            onChange={(e) => {
+              onChangeInputs(prev => ({ ...prev, gastosAdministrativos: Number(e.target.value) }));
+              onSelectCustomBank();
+            }}
+          />
+
+          <Input
             id="cok-value"
             label="COK Anual (%)"
             type="number"
             step="0.1"
             value={inputs.cok}
             onChange={(e) => onChangeInputs(prev => ({ ...prev, cok: Number(e.target.value) }))}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            id="comision-desembolso"
+            label="Comisión Desembolso (S/.)"
+            type="number"
+            value={inputs.comisionDesembolso}
+            onChange={(e) => {
+              onChangeInputs(prev => ({ ...prev, comisionDesembolso: Number(e.target.value) }));
+              onSelectCustomBank();
+            }}
+          />
+
+          <Input
+            id="comision-evaluacion"
+            label="Comisión Evaluación (S/.)"
+            type="number"
+            value={inputs.comisionEvaluacion}
+            onChange={(e) => {
+              onChangeInputs(prev => ({ ...prev, comisionEvaluacion: Number(e.target.value) }));
+              onSelectCustomBank();
+            }}
           />
         </div>
       </div>

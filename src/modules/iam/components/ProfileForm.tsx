@@ -1,32 +1,26 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { profileService, type ProfileData } from '../services/profileService';
+import { cloudinaryService } from '../services/cloudinaryService';
 
 interface ProfileFormProps {
   token: string;
-  userId: string;
   userEmail: string;
-  onProfileSave: (fullName: string, monthlyIncome: number) => void;
+  onProfileSave: (fullName: string) => void;
 }
 
-export function ProfileForm({ token, userId, userEmail, onProfileSave }: ProfileFormProps) {
+export function ProfileForm({ token, userEmail, onProfileSave }: ProfileFormProps) {
   const [profile, setProfile] = useState<ProfileData>({
     firstName: '',
     lastName: '',
-    documentId: '',
-    street: '',
-    city: '',
-    postalCode: '',
-    country: 'Perú',
-    phoneCountryCode: '+51',
-    phoneNumber: '',
-    monthlyIncome: 6500,
-    employmentStatus: 'Planilla / Dependiente'
+    profileImageUrl: ''
   });
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Cargar perfil existente al montar
   useEffect(() => {
@@ -34,20 +28,12 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
       setLoading(true);
       setError(null);
       try {
-        const data = await profileService.getProfileByUserId(token, userId);
+        const data = await profileService.getMyProfile(token);
         if (data) {
           setProfile({
             firstName: data.firstName || '',
             lastName: data.lastName || '',
-            documentId: data.documentId?.documentId || data.documentId || '',
-            street: data.address?.street || data.street || '',
-            city: data.address?.city || data.city || '',
-            postalCode: data.address?.postalCode || data.postalCode || '',
-            country: data.address?.country || data.country || 'Perú',
-            phoneCountryCode: data.phoneNumber?.phoneCountryCode || data.phoneCountryCode || '+51',
-            phoneNumber: data.phoneNumber?.phoneNumber || data.phoneNumber || '',
-            monthlyIncome: data.monthlyIncome || 6500,
-            employmentStatus: data.employmentStatus || 'Planilla / Dependiente'
+            profileImageUrl: data.profileImageUrl || ''
           });
         }
       } catch (err) {
@@ -59,7 +45,7 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
     }
 
     loadProfile();
-  }, [token, userId]);
+  }, [token]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -69,7 +55,7 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
     try {
       await profileService.saveProfile(token, profile);
       const fullName = `${profile.firstName} ${profile.lastName}`.trim();
-      onProfileSave(fullName || 'Usuario', profile.monthlyIncome);
+      onProfileSave(fullName || 'Usuario');
       setShowToast(true);
       setTimeout(() => setShowToast(false), 5000);
     } catch (err: any) {
@@ -80,15 +66,41 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
     }
   };
 
+  const handlePickImage = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Permite volver a elegir el mismo archivo más adelante
+    e.target.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('El archivo seleccionado no es una imagen válida.');
+      return;
+    }
+    // Límite de 5 MB
+    if (file.size > 5 * 1024 * 1024) {
+      setError('La imagen supera el límite de 5 MB.');
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    try {
+      const url = await cloudinaryService.uploadImage(file);
+      setProfile(prev => ({ ...prev, profileImageUrl: url }));
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'No se pudo subir la imagen.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const getProfileCompletion = () => {
-    const fields = [
-      profile.firstName,
-      profile.lastName,
-      profile.documentId,
-      profile.street,
-      profile.city,
-      profile.phoneNumber,
-    ];
+    const fields = [profile.firstName, profile.lastName, profile.profileImageUrl];
     const filled = fields.filter(f => f.trim().length > 0).length;
     return Math.round((filled / fields.length) * 100);
   };
@@ -106,13 +118,16 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
   }
 
   const completionPct = getProfileCompletion();
+  const avatarSrc = profile.profileImageUrl?.trim()
+    ? profile.profileImageUrl
+    : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profile.firstName || 'MC')}&backgroundColor=494bd6`;
 
   return (
     <div className="w-full relative">
       <header className="mb-8">
         <h1 className="font-headline-lg text-headline-lg text-on-surface">Configuración del Perfil</h1>
         <p className="font-body-md text-body-md text-on-surface-variant mt-2">
-          Mantén tu información actualizada para obtener simulaciones de crédito más precisas.
+          Mantén tu información personal actualizada.
         </p>
       </header>
 
@@ -159,29 +174,6 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
                   />
                 </div>
               </div>
-              <div className="form-group">
-                <label className="font-label-bold text-label-bold text-outline">Documento de Identidad</label>
-                <div className="luminous-input flex items-center pl-4">
-                  <span className="material-symbols-outlined text-outline">fingerprint</span>
-                  <input
-                    placeholder="DNI (8 dígitos)"
-                    type="text"
-                    maxLength={8}
-                    required
-                    value={profile.documentId}
-                    onChange={(e) => setProfile(prev => ({ ...prev, documentId: e.target.value.replace(/\D/g, '') }))}
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="font-label-bold text-label-bold text-outline">Fecha de Nacimiento (Opcional)</label>
-                <div className="luminous-input flex items-center pl-4">
-                  <span className="material-symbols-outlined text-outline">calendar_today</span>
-                  <input
-                    type="date"
-                  />
-                </div>
-              </div>
             </div>
           </section>
 
@@ -191,7 +183,7 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
               <span className="material-symbols-outlined text-primary text-3xl">alternate_email</span>
               <h2 className="font-headline-md text-headline-md text-on-surface">Contacto</h2>
             </div>
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <div className="form-group">
                 <label className="font-label-bold text-label-bold text-outline">Correo Electrónico</label>
                 <div className="luminous-input flex items-center pl-4 opacity-60">
@@ -203,109 +195,60 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
                   />
                 </div>
               </div>
-              <div className="form-group">
-                <label className="font-label-bold text-label-bold text-outline">Teléfono Móvil</label>
-                <div className="luminous-input flex items-center pl-4">
-                  <span className="material-symbols-outlined text-outline">phone_iphone</span>
-                  <input
-                    placeholder="999 999 999"
-                    type="tel"
-                    required
-                    value={profile.phoneNumber}
-                    onChange={(e) => setProfile(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="col-span-2 form-group">
-                <label className="font-label-bold text-label-bold text-outline">Dirección de Domicilio</label>
-                <div className="luminous-input flex items-center pl-4">
-                  <span className="material-symbols-outlined text-outline">location_on</span>
-                  <input
-                    placeholder="Calle, Número, Distrito"
-                    type="text"
-                    required
-                    value={profile.street}
-                    onChange={(e) => setProfile(prev => ({ ...prev, street: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="col-span-2 grid grid-cols-3 gap-4">
-                <div className="form-group">
-                  <label className="font-label-bold text-label-bold text-outline">Ciudad</label>
-                  <div className="luminous-input flex items-center">
-                    <input
-                      placeholder="Lima"
-                      type="text"
-                      required
-                      value={profile.city}
-                      onChange={(e) => setProfile(prev => ({ ...prev, city: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="font-label-bold text-label-bold text-outline">Cód. Postal</label>
-                  <div className="luminous-input flex items-center">
-                    <input
-                      placeholder="15001"
-                      type="text"
-                      required
-                      value={profile.postalCode}
-                      onChange={(e) => setProfile(prev => ({ ...prev, postalCode: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="font-label-bold text-label-bold text-outline">País</label>
-                  <div className="luminous-input flex items-center">
-                    <input
-                      placeholder="Perú"
-                      type="text"
-                      required
-                      value={profile.country}
-                      onChange={(e) => setProfile(prev => ({ ...prev, country: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
           </section>
 
-          {/* Sección 3: Situación Financiera */}
+          {/* Sección 3: Imagen de Perfil */}
           <section className="glass-card p-8">
             <div className="flex items-center gap-3 mb-6">
-              <span className="material-symbols-outlined text-tertiary text-3xl">payments</span>
-              <h2 className="font-headline-md text-headline-md text-on-surface">Situación Financiera</h2>
+              <span className="material-symbols-outlined text-tertiary text-3xl">image</span>
+              <h2 className="font-headline-md text-headline-md text-on-surface">Imagen de Perfil</h2>
             </div>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="form-group">
-                <label className="font-label-bold text-label-bold text-outline">Ingresos Mensuales Netos (S/.)</label>
-                <div className="luminous-input flex items-center pl-4">
-                  <span className="material-symbols-outlined text-outline">payments</span>
-                  <input
-                    placeholder="0.00"
-                    type="number"
-                    required
-                    min={1}
-                    value={profile.monthlyIncome}
-                    onChange={(e) => setProfile(prev => ({ ...prev, monthlyIncome: Number(e.target.value) }))}
-                  />
-                </div>
+
+            {/* Input de archivo oculto */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+
+            <div className="flex items-center gap-6">
+              {/* Previsualización */}
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', flexShrink: 0, backgroundColor: '#0b1220' }}>
+                <img
+                  alt="Vista previa"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  src={avatarSrc}
+                />
               </div>
-              <div className="form-group">
-                <label className="font-label-bold text-label-bold text-outline">Tipo de Contrato / Trabajo</label>
-                <div className="luminous-input flex items-center pl-4">
-                  <span className="material-symbols-outlined text-outline">work</span>
-                  <select
-                    className="w-full bg-transparent border-none text-on-surface focus:ring-0 py-3 px-4 font-body-md outline-none appearance-none cursor-pointer"
-                    value={profile.employmentStatus}
-                    onChange={(e) => setProfile(prev => ({ ...prev, employmentStatus: e.target.value }))}
-                  >
-                    <option className="bg-slate-950 text-white" value="Planilla / Dependiente">Planilla / Dependiente</option>
-                    <option className="bg-slate-950 text-white" value="Independiente">Independiente</option>
-                    <option className="bg-slate-950 text-white" value="Empresario">Empresario</option>
-                    <option className="bg-slate-950 text-white" value="Desempleado">Desempleado</option>
-                  </select>
-                </div>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handlePickImage}
+                  disabled={uploading}
+                  className="btn-secondary px-5 py-3 flex items-center justify-center gap-2 w-fit"
+                >
+                  {uploading ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                      <span>Subiendo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>upload</span>
+                      <span>{profile.profileImageUrl ? 'Cambiar fotografía' : 'Seleccionar fotografía'}</span>
+                    </>
+                  )}
+                </button>
+                <p className="text-outline text-xs italic leading-relaxed">
+                  Elige una imagen (JPG o PNG, máx. 5 MB). Se subirá a Cloudinary automáticamente.
+                </p>
               </div>
             </div>
           </section>
@@ -319,7 +262,7 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
                 <img
                   alt="Profile Large"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                  src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profile.firstName || 'MC')}&backgroundColor=494bd6`}
+                  src={avatarSrc}
                 />
               </div>
               <h3 className="font-headline-md text-headline-md text-on-surface">
@@ -338,9 +281,6 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
               <div style={{ width: '100%', backgroundColor: '#1e293b', borderRadius: '50px', height: '6px', overflow: 'hidden' }}>
                 <div style={{ backgroundColor: '#4edea3', height: '100%', width: `${completionPct}%`, transition: 'width 0.5s ease' }}></div>
               </div>
-              <p className="text-outline text-xs text-center italic leading-relaxed">
-                Completa tu situación financiera detallada para desbloquear tasas preferenciales y pasar la evaluación del banco.
-              </p>
             </div>
 
             <div className="flex flex-col gap-4">
@@ -352,17 +292,6 @@ export function ProfileForm({ token, userId, userEmail, onProfileSave }: Profile
                 <span className="material-symbols-outlined">save</span>
                 <span>{saving ? 'Guardando...' : 'Guardar Perfil'}</span>
               </button>
-            </div>
-          </div>
-
-          {/* Security Info Card */}
-          <div className="glass-card p-6 flex gap-4 items-start" style={{ borderLeft: '4px solid #10b981' }}>
-            <span className="material-symbols-outlined text-positive-emerald">verified_user</span>
-            <div>
-              <h4 className="font-label-bold text-label-bold text-on-surface text-sm">Tus datos están seguros</h4>
-              <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 text-xs leading-relaxed">
-                TurboCredit utiliza encriptación de grado bancario (AES-256) para proteger tu información personal y financiera de acuerdo a ley.
-              </p>
             </div>
           </div>
         </div>

@@ -21,8 +21,9 @@ export function LoginForm({ onSuccess, onToggleRegister, isBackendConnected }: L
     try {
       if (isBackendConnected) {
         const data = await authService.signIn(email, password);
-        // data contains { token, email, id, fullName, roles }
-        onSuccess(data.token, data.email, data.fullName || email.split('@')[0], data.id);
+        // data contains { id, email, firstName, lastName, token }
+        const name = [data.firstName, data.lastName].filter(Boolean).join(' ') || email.split('@')[0];
+        onSuccess(data.token, data.email, name, data.id);
       } else {
         // Fallback offline (simulado)
         const mockToken = 'mock-jwt-token-sbs-economist-grade-10';
