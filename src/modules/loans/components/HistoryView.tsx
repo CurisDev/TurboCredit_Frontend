@@ -170,7 +170,7 @@ export function HistoryView({
 
               {/* Detail Metrics */}
               <div className="p-6 flex flex-col gap-6">
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div style={{ borderLeft: '4px solid #8083ff', paddingLeft: '1rem' }}>
                     <p className="text-outline text-[10px] uppercase font-bold tracking-widest">Precio Auto</p>
                     <p className="text-sm text-primary font-bold mt-0.5">
@@ -201,7 +201,7 @@ export function HistoryView({
                   <h4 className="text-headline-md text-base text-white font-bold pb-2" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                     Resumen Financiero Proyectado
                   </h4>
-                  <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                       <span className="text-outline">Cliente</span>
                       <span className="text-white font-bold">{selectedSim.clientName}</span>
@@ -232,7 +232,7 @@ export function HistoryView({
                       <span className="text-outline">TIR Mensual</span>
                       <span className="text-warning-yellow font-bold">{fmtPercent(selectedSim.irr || 0)}</span>
                     </div>
-                    <div className="flex justify-between py-2 col-span-2" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                    <div className="flex justify-between py-2 col-span-1 sm:col-span-2" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                       <span className="text-outline font-bold" style={{ fontSize: '0.875rem' }}>Cuota Mensual Estimada (Fija)</span>
                       <span className="text-secondary font-bold" style={{ fontSize: '1.1rem' }}>{fmtCurrency(selectedSim.fixedInstallment || 0)}</span>
                     </div>

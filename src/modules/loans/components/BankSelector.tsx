@@ -24,15 +24,15 @@ export function BankSelector({ selectedBankId, onSelectBank }: BankSelectorProps
             key={bank.id}
             type="button"
             onClick={() => onSelectBank(bank.id)}
-            className={`btn-bank p-4 flex flex-col justify-between ${
-              selectedBankId === bank.id ? 'active' : ''
+            className={`btn-bank p-4 flex flex-col justify-between min-w-0 ${
+                selectedBankId === bank.id ? 'active' : ''
             }`}
-            style={{ height: '96px', textAlign: 'left' }}
+            style={{ height: '96px', textAlign: 'left', minWidth: 0 }}
           >
-            <div className="flex justify-between items-center w-full">
-              <span className="bold text-white" style={{ fontSize: '0.875rem' }}>{bank.name}</span>
+              <div className="flex justify-between items-center w-full min-w-0" style={{ gap: '6px' }}>
+                  <span className="bold text-white" style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{bank.name}</span>
               {bank.id !== 'custom' && (
-                <span style={{ fontSize: '10px', backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#dce1fb', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '10px', backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#dce1fb', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', flexShrink: 0 }}>
                   TEA: {(bank.config.tea * 100).toFixed(1)}%
                 </span>
               )}

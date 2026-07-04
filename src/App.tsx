@@ -33,7 +33,27 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    const AUTO_COLLAPSE_WIDTH = 1300; // px
+    let ticking = false;
 
+    const applyState = () => {
+      const shouldCollapse = window.innerWidth <= AUTO_COLLAPSE_WIDTH;
+      setSidebarCollapsed((prev) => (prev === shouldCollapse ? prev : shouldCollapse));
+      ticking = false;
+    };
+
+    const handleResize = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(applyState);
+        ticking = true;
+      }
+    };
+
+    applyState(); // estado correcto apenas carga, sin esperar el primer resize
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   // --- Estados del Simulador ---
   const [selectedBankId, setSelectedBankId] = useState<string>('bcp');
   const [inputs, setInputs] = useState<SimulatorInputs>({
@@ -392,8 +412,15 @@ export default function App() {
           </span>
         </div>
         
-        <div className="flex items-center gap-4" style={{ marginLeft: 'auto' }}>
-          {userName && <span className="text-body-sm text-slate-300 font-bold">Hola, {userName}</span>}
+        <div className="flex items-center gap-4" style={{ marginLeft: 'auto',minWidth:0 }}>
+          {userName && (
+              <span
+                  className="text-body-sm text-slate-300 font-bold"
+                  style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'160px'}}
+              >
+                Hola, {userName}
+              </span>
+          )}
           <button 
             onClick={() => navigate('/profile')}
             className="btn-secondary px-4 py-2 text-body-sm flex items-center gap-2"
@@ -408,24 +435,12 @@ export default function App() {
       <div className="flex">
         {/* SideNavBar (Desktop) */}
         <aside className={`side-nav ${sidebarCollapsed ? 'collapsed' : ''}`}>
-          <div className="mb-6 flex items-center justify-between gap-3 side-brand">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-secondary" style={{ fontSize: '30px', fontVariationSettings: "'FILL' 1" }}>speed</span>
-              <div className="side-brand-text">
-                <h3 className="text-headline-md text-white uppercase tracking-tight" style={{ fontSize: '1.25rem', fontWeight: 900 }}>TurboCredit</h3>
-                <p className="text-body-sm text-outline uppercase tracking-widest" style={{ fontSize: '10px' }}>Financial Intel</p>
-              </div>
+          <div className="mb-6 flex items-center gap-3 side-brand">
+            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '30px', fontVariationSettings: "'FILL' 1" }}>speed</span>
+            <div className="side-brand-text">
+              <h3 className="text-headline-md text-white uppercase tracking-tight" style={{ fontSize: '1.25rem', fontWeight: 900 }}>TurboCredit</h3>
+              <p className="text-body-sm text-outline uppercase tracking-widest" style={{ fontSize: '10px' }}>Financial Intel</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(prev => !prev)}
-              className="sidebar-toggle"
-              title={sidebarCollapsed ? 'Expandir menú' : 'Contraer menú'}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
-                {sidebarCollapsed ? 'chevron_right' : 'chevron_left'}
-              </span>
-            </button>
           </div>
 
           <nav className="flex flex-col gap-2">
@@ -486,7 +501,7 @@ export default function App() {
                     </header>
 
                     {/* Formularios de entrada */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                       <div className="flex flex-col gap-6">
                         <BankSelector
                           selectedBankId={selectedBankId}
