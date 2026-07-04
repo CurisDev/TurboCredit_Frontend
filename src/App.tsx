@@ -19,8 +19,9 @@ import { HistoryView } from './modules/loans/components/HistoryView';
 
 import type { SimulatorInputs, SimulatorResult } from './modules/loans/domain/models';
 import { loanService } from './modules/loans/services/loanService';
+import { profileService } from './modules/iam/services/profileService';
 import { vehicleCreditCalculator } from './utils/vehicleCreditCalculator';
-import { bankConfigurations } from './data/bankConfigurations';
+import { bankConfigurations, validateSimulation } from './data/bankConfigurations';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082/api/v1';
 
@@ -66,6 +67,7 @@ export default function App() {
     tea: 10.50,
     termMonths: 24,
     gracePeriodMonths: 0,
+    gracePeriodType: 'TOTAL',
     residualPercentage: 40,
     seguroDesgravamenRate: 0.050,
     seguroVehicularMonthly: 150,
@@ -81,15 +83,32 @@ export default function App() {
   const [history, setHistory] = useState<any[]>([]);
   const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null);
+  // Id del crédito guardado que se está editando (null = nueva simulación)
+  const [editingId, setEditingId] = useState<number | null>(null);
+  // Nombre del cliente obtenido del endpoint de perfil (fallback para el historial)
+  const [profileName, setProfileName] = useState<string>('');
 
   const roundValue = (val: number): number => Math.round(val * 100) / 100;
 
+  // Límites del banco seleccionado y validación de las condiciones ingresadas
+  const selectedBank = bankConfigurations.find(b => b.id === selectedBankId) || bankConfigurations[0];
+  const bankLimits = selectedBank.limits;
+  const simulationErrors = validateSimulation(inputs, bankLimits);
+  const isSimulationValid = simulationErrors.length === 0;
+
+  // Un id de backend es un entero pequeño; el fallback local usa Date.now() (muy grande)
+  const isBackendId = (id: unknown): id is number =>
+    typeof id === 'number' && id < 1000000000000;
+
   // --- Operaciones de Historial ---
+  // Clave de LocalStorage por cuenta (scoping por email): en modo offline todos los
+  // logins comparten un userId simulado, por lo que el email es el discriminante real.
+  const getLocalSimKey = (email?: string | null) =>
+    `local_simulations_${(email || userEmail || 'anon').toLowerCase()}`;
+
   const loadLocalStorageHistory = () => {
-    const localHistory = localStorage.getItem('local_simulations');
-    if (localHistory) {
-      setHistory(JSON.parse(localHistory));
-    }
+    const localHistory = localStorage.getItem(getLocalSimKey());
+    setHistory(localHistory ? JSON.parse(localHistory) : []);
   };
 
   const loadHistory = async () => {
@@ -127,25 +146,45 @@ export default function App() {
     }
   }, [inputs]);
 
-  // --- Cargar configuraciones del banco seleccionado ---
+  // --- Cargar configuración y AJUSTAR (clamp) las entradas al rango del banco ---
   useEffect(() => {
     const bank = bankConfigurations.find(b => b.id === selectedBankId);
-    if (bank && selectedBankId !== 'custom') {
-      const p = bank.config;
-      const downAmount = roundValue(inputs.vehiclePrice * (inputs.downPaymentPct / 100));
-      setInputs(prev => ({
+    if (!bank) return;
+    const L = bank.limits;
+    const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+    setInputs(prev => {
+      // Ajusta los campos controlados por selectores/sliders al rango del banco,
+      // evitando errores de validación por valores fuera de rango al cambiar de entidad.
+      const downPaymentPct = clamp(prev.downPaymentPct, L.minDownPaymentPct, L.maxDownPaymentPct);
+      const residualPercentage = clamp(prev.residualPercentage, L.minResidualPct, L.maxResidualPct);
+      const termMonths = L.terms.includes(prev.termMonths) ? prev.termMonths : L.terms[0];
+      const gracePeriodMonths = clamp(prev.gracePeriodMonths, 0, L.maxGraceMonths);
+
+      const next: SimulatorInputs = {
         ...prev,
-        tea: p.tea * 100,
-        seguroDesgravamenRate: p.seguroDesgravamenRate * 100,
-        seguroVehicularMonthly: p.seguroVehicularMonthly,
-        portes: p.portes,
-        gastosAdministrativos: p.gastosAdministrativos,
-        comisionDesembolso: p.comisionDesembolso,
-        comisionEvaluacion: p.comisionEvaluacion,
-        downPayment: downAmount,
-        cok: p.cok * 100,
-      }));
-    }
+        downPaymentPct,
+        residualPercentage,
+        termMonths,
+        gracePeriodMonths,
+        downPayment: roundValue(prev.vehiclePrice * (downPaymentPct / 100)),
+      };
+
+      // Solo los bancos predefinidos imponen tasas/seguros/comisiones
+      if (selectedBankId !== 'custom') {
+        const p = bank.config;
+        next.tea = p.tea * 100;
+        next.seguroDesgravamenRate = p.seguroDesgravamenRate * 100;
+        next.seguroVehicularMonthly = p.seguroVehicularMonthly;
+        next.portes = p.portes;
+        next.gastosAdministrativos = p.gastosAdministrativos;
+        next.comisionDesembolso = p.comisionDesembolso;
+        next.comisionEvaluacion = p.comisionEvaluacion;
+        next.cok = p.cok * 100;
+      }
+
+      return next;
+    });
   }, [selectedBankId]);
 
   // --- Cargar historial al iniciar ---
@@ -155,6 +194,25 @@ export default function App() {
     } else {
       loadLocalStorageHistory();
     }
+  }, [token]);
+
+  // --- Obtener el nombre del cliente desde el endpoint de perfil ---
+  useEffect(() => {
+    if (!token) {
+      setProfileName('');
+      return;
+    }
+    profileService.getMyProfile(token)
+      .then((data) => {
+        if (!data) return;
+        const fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+        if (fullName) {
+          setProfileName(fullName);
+          // Usa el nombre del perfil como cliente de las nuevas simulaciones
+          setInputs(prev => ({ ...prev, clientName: fullName }));
+        }
+      })
+      .catch(() => { /* offline: se conserva el nombre de sesión */ });
   }, [token]);
 
   // --- Manejador Login Exitoso ---
@@ -167,6 +225,8 @@ export default function App() {
     setUserName(name);
     setUserEmail(email);
     setUserId(uId);
+    // Sincroniza el nombre del cliente con el usuario autenticado
+    setInputs(prev => ({ ...prev, clientName: name }));
     navigate('/simulator');
   };
 
@@ -183,18 +243,37 @@ export default function App() {
     navigate('/login');
   };
 
-  // --- Guardar simulación ---
+  // --- Guardar / actualizar simulación ---
   const handleSaveSimulation = async () => {
     if (!results || !token) return;
-    setSaveStatus({ type: 'loading', message: 'Guardando simulación en PostgreSQL...' });
 
-    const selectedBankName = selectedBankId === 'custom' 
-      ? 'Personalizado' 
+    if (!isSimulationValid) {
+      setSaveStatus({
+        type: 'error',
+        message: 'No se puede guardar: corrige las condiciones marcadas en rojo antes de continuar.'
+      });
+      setTimeout(() => setSaveStatus(null), 6000);
+      return;
+    }
+
+    const isEditing = editingId !== null;
+    setSaveStatus({
+      type: 'loading',
+      message: isEditing ? 'Actualizando simulación...' : 'Guardando simulación...'
+    });
+
+    const selectedBankName = selectedBankId === 'custom'
+      ? 'Personalizado'
       : bankConfigurations.find(b => b.id === selectedBankId)?.name || 'Desconocido';
 
     try {
-      await loanService.saveCredit(token, inputs, selectedBankName);
-      setSaveStatus({ type: 'success', message: 'Simulación guardada exitosamente en la base de datos PostgreSQL del backend.' });
+      if (isEditing) {
+        await loanService.updateCredit(token, editingId!, inputs, selectedBankName, results);
+        setSaveStatus({ type: 'success', message: 'Simulación actualizada exitosamente.' });
+      } else {
+        await loanService.saveCredit(token, inputs, selectedBankName, results);
+        setSaveStatus({ type: 'success', message: 'Simulación guardada exitosamente.' });
+      }
       loadHistory();
     } catch (err) {
       console.error('Error al guardar en base de datos:', err);
@@ -205,11 +284,12 @@ export default function App() {
           message: 'Error de validación del Crédito en el servidor. Verifique si se incumplen las políticas de riesgo del banco (LTV > 90%, Cuota inicial < 10% del precio, o Relación Cuota/Ingreso > 40%).' 
         });
       } else {
-        // Fallback localstorage
-        const localSimulations = localStorage.getItem('local_simulations');
+        // Fallback localstorage (scoped por cuenta/email)
+        const localSimulations = localStorage.getItem(getLocalSimKey());
         const sims = localSimulations ? JSON.parse(localSimulations) : [];
         const newSim = {
           id: Date.now(),
+          ownerEmail: userEmail,
           clientName: inputs.clientName,
           vehicleBrand: inputs.vehicleBrand,
           vehicleModel: inputs.vehicleModel,
@@ -220,7 +300,7 @@ export default function App() {
           rateType: 'EFFECTIVE',
           termMonths: inputs.termMonths,
           gracePeriodMonths: inputs.gracePeriodMonths,
-          gracePeriodType: 'TOTAL',
+          gracePeriodType: inputs.gracePeriodMonths > 0 ? inputs.gracePeriodType : 'TOTAL',
           currency: 'PEN',
           bankName: selectedBankName,
           tcea: results.tcea,
@@ -242,7 +322,7 @@ export default function App() {
         };
         
         sims.unshift(newSim);
-        localStorage.setItem('local_simulations', JSON.stringify(sims));
+        localStorage.setItem(getLocalSimKey(), JSON.stringify(sims));
         setHistory(sims);
         
         setSaveStatus({ 
@@ -270,6 +350,7 @@ export default function App() {
       tea: sim.interestRate || sim.tea || 10,
       termMonths: sim.termMonths || 24,
       gracePeriodMonths: sim.gracePeriodMonths || 0,
+      gracePeriodType: sim.gracePeriodType === 'PARTIAL' ? 'PARTIAL' : 'TOTAL',
       residualPercentage: sim.residualPercentage || 40,
       seguroDesgravamenRate: sim.seguroDesgravamenRate || 0.05,
       seguroVehicularMonthly: sim.seguroVehicularMonthly || 150,
@@ -288,36 +369,14 @@ export default function App() {
       setSelectedBankId('custom');
     }
 
-    // Opcionalmente recuperar el cronograma exacto guardado del backend
-    if (isBackendConnected && token && typeof sim.id === 'number' && sim.id < 1000000000000) {
-      try {
-        const scheduleData = await loanService.getPaymentSchedule(token, sim.id);
-        if (scheduleData && scheduleData.scheduleItems && results) {
-          const dbItems = scheduleData.scheduleItems.map((item: any) => ({
-            period: item.period,
-            dueDate: new Date(item.dueDate).toLocaleDateString('es-PE'),
-            beginningBalance: item.remainingBalance + item.amortization,
-            interest: item.interest,
-            amortization: item.amortization,
-            installment: item.installment,
-            lifeInsurance: item.lifeInsurance || 0,
-            vehicularInsurance: item.vehicularInsurance || 0,
-            portes: item.portes || 0,
-            administrationFee: item.administrationFee || 0,
-            totalInstallment: item.totalInstallment || item.installment,
-            remainingBalance: item.remainingBalance,
-            isGracePeriod: item.isGracePeriod
-          }));
-          setResults(prev => prev ? ({ ...prev, schedule: dbItems }) : null);
-        }
-      } catch (err) {
-        console.error('Error recuperando cronograma de base de datos:', err);
-      }
-    }
+    // El cronograma y los indicadores se recalculan en el frontend a partir de las
+    // entradas cargadas (fuente de verdad), garantizando consistencia con lo guardado.
   };
 
   const handleLoadIntoSimulator = (sim: any) => {
     handleSelectHistory(sim);
+    // Si proviene del backend, se activa el modo edición para actualizar ese registro
+    setEditingId(isBackendId(sim.id) ? sim.id : null);
     navigate('/simulator');
   };
 
@@ -516,6 +575,8 @@ export default function App() {
                         inputs={inputs}
                         onChangeInputs={setInputs}
                         onSelectCustomBank={() => setSelectedBankId('custom')}
+                        limits={bankLimits}
+                        errors={simulationErrors}
                       />
                     </div>
 
@@ -533,17 +594,30 @@ export default function App() {
                       <div className="text-sm">
                         <span className="text-slate-400 block uppercase font-bold tracking-wider mb-1" style={{ fontSize: '10px' }}>Monto del Préstamo a Financiar</span>
                         <strong className="text-white text-lg font-bold" style={{ fontSize: '1.25rem' }}>{fmtCurrency(Math.max(0, inputs.vehiclePrice - inputs.downPayment))}</strong>
+                        {editingId !== null && (
+                          <span className="flex items-center gap-2 mt-2 text-xs" style={{ color: '#8083ff' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit</span>
+                            Editando simulación guardada
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(null)}
+                              className="underline opacity-80 hover:opacity-100"
+                            >
+                              (crear una nueva)
+                            </button>
+                          </span>
+                        )}
                       </div>
 
                       <button
                         type="button"
                         onClick={handleSaveSimulation}
-                        disabled={!results}
+                        disabled={!results || !isSimulationValid}
                         className="btn-primary-gradient px-6 py-3 flex items-center justify-center gap-2"
-                        style={{ fontSize: '0.75rem', opacity: results ? 1 : 0.5, cursor: results ? 'pointer' : 'not-allowed' }}
+                        style={{ fontSize: '0.75rem', opacity: (results && isSimulationValid) ? 1 : 0.5, cursor: (results && isSimulationValid) ? 'pointer' : 'not-allowed' }}
                       >
                         <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>save</span>
-                        <span>Guardar Simulación</span>
+                        <span>{editingId !== null ? 'Actualizar Simulación' : 'Guardar Simulación'}</span>
                       </button>
                     </div>
 
@@ -567,11 +641,12 @@ export default function App() {
               <Route 
                 path="/history" 
                 element={
-                  <HistoryView 
+                  <HistoryView
                     history={history}
                     selectedHistoryId={selectedHistoryId}
                     onSelectHistory={handleSelectHistory}
                     onLoadIntoSimulator={handleLoadIntoSimulator}
+                    fallbackClientName={profileName || userName || ''}
                   />
                 } 
               />

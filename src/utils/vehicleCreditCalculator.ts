@@ -8,6 +8,7 @@ export interface SimulatorInputs {
   tea: number; // e.g. 10.50 (%)
   termMonths: number; // e.g. 24
   gracePeriodMonths: number; // e.g. 2
+  gracePeriodType: 'TOTAL' | 'PARTIAL'; // Total: capitaliza interés | Parcial: solo paga interés
   residualPercentage: number; // e.g. 40
   seguroDesgravamenRate: number; // e.g. 0.05 (%)
   seguroVehicularMonthly: number; // e.g. 150
@@ -59,13 +60,16 @@ export const vehicleCreditCalculator = {
 
     const g = inputs.gracePeriodMonths;
     const n = inputs.termMonths - g;
-    
+    const isTotalGrace = g > 0 && inputs.gracePeriodType === 'TOTAL';
+
     if (n <= 0) {
       throw new Error('El plazo total debe ser mayor a los meses de gracia');
     }
 
-    // 1. Capitalización durante gracia total: L_g = L_0 * (1 + TEM)^g
-    const l_g = loanAmount * Math.pow(1 + tem, g);
+    // 1. Base de cálculo de la cuota:
+    //    - Gracia TOTAL: el interés se capitaliza -> L_g = L_0 * (1 + TEM)^g
+    //    - Gracia PARCIAL o sin gracia: el saldo no crece -> L_g = L_0
+    const l_g = isTotalGrace ? loanAmount * Math.pow(1 + tem, g) : loanAmount;
 
     // 2. Cuota residual (Valor Residuo): VF = precioVehiculo * residualPct / 100
     const residualValue = round(inputs.vehiclePrice * (inputs.residualPercentage / 100));
@@ -88,17 +92,23 @@ export const vehicleCreditCalculator = {
     // Seguro de desgravamen rate mensual
     const desgravamenRateDec = inputs.seguroDesgravamenRate / 100;
 
-    // Períodos de gracia (Gracia Total)
+    // Períodos de gracia (Total o Parcial)
     for (let period = 1; period <= g; period++) {
       const beginningBalance = remainingBalance;
       const interest = round(beginningBalance * tem);
       const amortization = 0;
-      const installment = 0;
 
-      // El interés de gracia total capitaliza en el saldo deudor
-      remainingBalance = round(remainingBalance + interest);
+      let installment: number;
+      if (inputs.gracePeriodType === 'PARTIAL') {
+        // Gracia parcial: se paga solo el interés; el saldo deudor no cambia
+        installment = interest;
+      } else {
+        // Gracia total: no se paga nada; el interés se capitaliza en el saldo deudor
+        installment = 0;
+        remainingBalance = round(remainingBalance + interest);
+      }
 
-      const lifeInsurance = round(remainingBalance * desgravamenRateDec); // sobre saldo capitalizado
+      const lifeInsurance = round(remainingBalance * desgravamenRateDec); // sobre saldo del periodo
       const vehicularInsurance = inputs.seguroVehicularMonthly;
       const portes = inputs.portes;
       const adminFee = inputs.gastosAdministrativos;

@@ -294,17 +294,6 @@ export function ProfileForm({ token, userEmail, onProfileSave }: ProfileFormProp
               </button>
             </div>
           </div>
-
-          {/* Security Info Card */}
-          <div className="glass-card p-6 flex gap-4 items-start" style={{ borderLeft: '4px solid #10b981' }}>
-            <span className="material-symbols-outlined text-positive-emerald">verified_user</span>
-            <div>
-              <h4 className="font-label-bold text-label-bold text-on-surface text-sm">Tus datos están seguros</h4>
-              <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 text-xs leading-relaxed">
-                TurboCredit utiliza encriptación de grado bancario (AES-256) para proteger tu información personal.
-              </p>
-            </div>
-          </div>
         </div>
       </form>
 

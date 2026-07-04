@@ -8,6 +8,7 @@ export interface SimulatorInputs {
   tea: number;
   termMonths: number;
   gracePeriodMonths: number;
+  gracePeriodType: 'TOTAL' | 'PARTIAL';
   residualPercentage: number;
   seguroDesgravamenRate: number;
   seguroVehicularMonthly: number;
