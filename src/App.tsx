@@ -12,6 +12,7 @@ import { ProfileForm } from './modules/iam/components/ProfileForm';
 // Loans
 import { BankSelector } from './modules/loans/components/BankSelector';
 import { VehicleForm } from './modules/loans/components/VehicleForm';
+import { ClientForm } from './modules/loans/components/ClientForm';
 import { FinancialForm } from './modules/loans/components/FinancialForm';
 import { MetricsPanel } from './modules/loans/components/MetricsPanel';
 import { ScheduleTable } from './modules/loans/components/ScheduleTable';
@@ -71,8 +72,10 @@ export default function App() {
     residualPercentage: 40,
     seguroDesgravamenRate: 0.050,
     seguroVehicularMonthly: 150,
-    portes: 15,
+    physicalShipping: false,
+    portes: 0,
     gastosAdministrativos: 30,
+    gpsPrice: 1000,
     comisionDesembolso: 500,
     comisionEvaluacion: 265,
     cok: 10.0,
@@ -170,17 +173,17 @@ export default function App() {
         downPayment: roundValue(prev.vehiclePrice * (downPaymentPct / 100)),
       };
 
-      // Solo los bancos predefinidos imponen tasas/seguros/comisiones
+      // Solo los bancos predefinidos imponen tasas/seguros/comisiones.
+      // Los portes dependen de si el cliente pide envío físico (no los fija el banco) y el
+      // COK es un dato del cliente (el banco no lo cobra), por lo que no se sobrescriben aquí.
       if (selectedBankId !== 'custom') {
         const p = bank.config;
         next.tea = p.tea * 100;
         next.seguroDesgravamenRate = p.seguroDesgravamenRate * 100;
         next.seguroVehicularMonthly = p.seguroVehicularMonthly;
-        next.portes = p.portes;
         next.gastosAdministrativos = p.gastosAdministrativos;
         next.comisionDesembolso = p.comisionDesembolso;
         next.comisionEvaluacion = p.comisionEvaluacion;
-        next.cok = p.cok * 100;
       }
 
       return next;
@@ -315,6 +318,7 @@ export default function App() {
           seguroVehicularMonthly: inputs.seguroVehicularMonthly,
           portes: inputs.portes,
           gastosAdministrativos: inputs.gastosAdministrativos,
+          gpsPrice: inputs.gpsPrice,
           comisionDesembolso: inputs.comisionDesembolso,
           comisionEvaluacion: inputs.comisionEvaluacion,
           cok: inputs.cok,
@@ -354,8 +358,10 @@ export default function App() {
       residualPercentage: sim.residualPercentage || 40,
       seguroDesgravamenRate: sim.seguroDesgravamenRate || 0.05,
       seguroVehicularMonthly: sim.seguroVehicularMonthly || 150,
-      portes: sim.portes || 15,
+      physicalShipping: (sim.portes ?? 0) > 0,
+      portes: sim.portes ?? 0,
       gastosAdministrativos: sim.gastosAdministrativos || 30,
+      gpsPrice: sim.gpsPrice || 1000,
       comisionDesembolso: sim.comisionDesembolso || 500,
       comisionEvaluacion: sim.comisionEvaluacion || 265,
       cok: sim.cok || 10.0,
@@ -567,6 +573,10 @@ export default function App() {
                           onSelectBank={setSelectedBankId}
                         />
                         <VehicleForm
+                          inputs={inputs}
+                          onChangeInputs={setInputs}
+                        />
+                        <ClientForm
                           inputs={inputs}
                           onChangeInputs={setInputs}
                         />

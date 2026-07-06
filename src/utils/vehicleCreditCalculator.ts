@@ -12,11 +12,13 @@ export interface SimulatorInputs {
   residualPercentage: number; // e.g. 40
   seguroDesgravamenRate: number; // e.g. 0.05 (%)
   seguroVehicularMonthly: number; // e.g. 150
-  portes: number; // e.g. 15
+  physicalShipping: boolean; // ¿Desea envío físico? Si es true, se cobran portes
+  portes: number; // 0 si no hay envío físico, 15 si lo hay
   gastosAdministrativos: number; // e.g. 30
+  gpsPrice: number; // Precio del GPS (S/.), entre 1000 y 5000
   comisionDesembolso: number; // e.g. 500
   comisionEvaluacion: number; // e.g. 265
-  cok: number; // e.g. 10.0 (%) - COK anual
+  cok: number; // e.g. 10.0 (%) - COK anual (dato del cliente)
 }
 
 export interface ScheduleItem {
@@ -181,8 +183,9 @@ export const vehicleCreditCalculator = {
     }
 
     // 6. Calcular VAN, TIR, TCEA
-    // Inversión Inicial (desde el punto de vista del deudor): Préstamo recibido menos comisiones iniciales
-    const initialInflow = loanAmount - inputs.comisionDesembolso - inputs.comisionEvaluacion;
+    // Inversión Inicial (desde el punto de vista del deudor): Préstamo recibido menos comisiones
+    // iniciales y el costo único de instalación del GPS.
+    const initialInflow = loanAmount - inputs.comisionDesembolso - inputs.comisionEvaluacion - (inputs.gpsPrice || 0);
 
     const flows: number[] = [initialInflow];
     for (const item of schedule) {

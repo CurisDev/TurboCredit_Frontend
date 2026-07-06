@@ -256,18 +256,7 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <Input
-            id="portes"
-            label="Portes (S/.)"
-            type="number"
-            value={inputs.portes}
-            onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, portes: Number(e.target.value) }));
-              onSelectCustomBank();
-            }}
-          />
-
+        <div className="grid grid-cols-2 gap-4">
           <Input
             id="gastos-adm"
             label="Gasto Adm. (S/.)"
@@ -280,14 +269,51 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
           />
 
           <Input
-            id="cok-value"
-            label="COK Anual (%)"
+            id="gps-price"
+            label="Precio del GPS (S/.)"
             type="number"
-            step="0.1"
-            value={inputs.cok}
-            onChange={(e) => onChangeInputs(prev => ({ ...prev, cok: Number(e.target.value) }))}
+            min={1000}
+            max={5000}
+            step="50"
+            value={inputs.gpsPrice}
+            onChange={(e) => {
+              // Permite escribir libremente; el rango se ajusta al perder el foco
+              onChangeInputs(prev => ({ ...prev, gpsPrice: Number(e.target.value) }));
+            }}
+            onBlur={(e) => {
+              const raw = Number(e.target.value);
+              // Evita valores irreales: se limita al rango permitido [1000, 5000]
+              const clamped = Math.min(5000, Math.max(1000, isNaN(raw) ? 1000 : raw));
+              onChangeInputs(prev => ({ ...prev, gpsPrice: clamped }));
+            }}
           />
         </div>
+
+        {/* Portes: solo se cobran (S/. 15) si el cliente elige envío físico */}
+        <label
+          htmlFor="physical-shipping"
+          className="flex items-center gap-3 cursor-pointer p-3 rounded-xl"
+          style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}
+        >
+          <input
+            id="physical-shipping"
+            type="checkbox"
+            checked={inputs.physicalShipping}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              onChangeInputs(prev => ({ ...prev, physicalShipping: checked, portes: checked ? 15 : 0 }));
+              onSelectCustomBank();
+            }}
+            className="cursor-pointer"
+            style={{ width: '18px', height: '18px' }}
+          />
+          <span className="flex flex-col">
+            <span className="text-white text-sm font-bold">¿Desea envío físico?</span>
+            <span className="text-outline text-xs">
+              {inputs.physicalShipping ? 'Portes: S/. 15.00 mensuales' : 'Sin costo de portes (S/. 0.00)'}
+            </span>
+          </span>
+        </label>
 
         <div className="grid grid-cols-2 gap-4">
           <Input

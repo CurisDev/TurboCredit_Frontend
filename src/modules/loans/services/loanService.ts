@@ -27,6 +27,7 @@ const buildPayload = (inputs: SimulatorInputs, bankName: string, results?: Simul
   seguroVehicularMonthly: inputs.seguroVehicularMonthly,
   portes: inputs.portes,
   gastosAdministrativos: inputs.gastosAdministrativos,
+  gpsPrice: inputs.gpsPrice,
   comisionDesembolso: inputs.comisionDesembolso,
   comisionEvaluacion: inputs.comisionEvaluacion,
   cok: inputs.cok,
