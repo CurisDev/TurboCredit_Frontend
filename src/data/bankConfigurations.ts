@@ -8,10 +8,8 @@ export interface BankConfig {
   seguroDesgravamenRate: number; // Tasa mensual de seguro de desgravamen (en decimal, e.g. 0.0005 para 0.05%)
   seguroVehicularMonthly: number; // Costo mensual fijo de seguro vehicular (en Soles, e.g. 150)
   portes: number; // Costo mensual de portes (en Soles, e.g. 15)
-  gastosAdministrativos: number; // Gastos de administración mensuales (en Soles, e.g. 30)
-  comisionDesembolso: number; // Comisión inicial única de desembolso (en Soles, e.g. 500)
-  comisionEvaluacion: number; // Comisión inicial única de evaluación/tasación (en Soles, e.g. 265)
   cok: number; // Tasa de descuento anual (COK) para el deudor (en decimal, e.g. 0.10 para 10%)
+  evaluacionSeguroExterno: number; // Costo de evaluación de seguro externo en Soles
 }
 
 export interface BankLimits {
@@ -46,10 +44,8 @@ export const bankConfigurations: Bank[] = [
       seguroDesgravamenRate: 0.00050, // 0.050% mensual
       seguroVehicularMonthly: 150.00,
       portes: 15.00,
-      gastosAdministrativos: 30.00,
-      comisionDesembolso: 500.00,
-      comisionEvaluacion: 265.00,
       cok: 0.10, // 10% anual
+      evaluacionSeguroExterno: 245,
     },
     limits: {
       minVehiclePrice: 20000,
@@ -78,10 +74,8 @@ export const bankConfigurations: Bank[] = [
       seguroDesgravamenRate: 0.00045, // 0.045% mensual
       seguroVehicularMonthly: 140.00,
       portes: 12.00,
-      gastosAdministrativos: 25.00,
-      comisionDesembolso: 450.00,
-      comisionEvaluacion: 250.00,
       cok: 0.10,
+      evaluacionSeguroExterno: 245,
     },
     limits: {
       minVehiclePrice: 15000,
@@ -110,10 +104,8 @@ export const bankConfigurations: Bank[] = [
       seguroDesgravamenRate: 0.00052, // 0.052% mensual
       seguroVehicularMonthly: 160.00,
       portes: 14.00,
-      gastosAdministrativos: 28.00,
-      comisionDesembolso: 520.00,
-      comisionEvaluacion: 270.00,
       cok: 0.10,
+      evaluacionSeguroExterno: 210,
     },
     limits: {
       minVehiclePrice: 18000,
@@ -142,10 +134,8 @@ export const bankConfigurations: Bank[] = [
       seguroDesgravamenRate: 0.00048, // 0.048% mensual
       seguroVehicularMonthly: 145.00,
       portes: 13.00,
-      gastosAdministrativos: 26.00,
-      comisionDesembolso: 480.00,
-      comisionEvaluacion: 260.00,
       cok: 0.10,
+      evaluacionSeguroExterno: 190,
     },
     limits: {
       minVehiclePrice: 20000,
@@ -153,7 +143,7 @@ export const bankConfigurations: Bank[] = [
       minDownPaymentPct: 25,
       maxDownPaymentPct: 50,
       terms: [24, 36, 48],
-      maxGraceMonths: 3,
+      maxGraceMonths: 2, // Personas naturales: hasta 60 días (2 meses)
       minResidualPct: 30,
       maxResidualPct: 50,
     },
@@ -174,10 +164,8 @@ export const bankConfigurations: Bank[] = [
       seguroDesgravamenRate: 0.00050, // 0.05% mensual
       seguroVehicularMonthly: 150.00,
       portes: 15.00,
-      gastosAdministrativos: 30.00,
-      comisionDesembolso: 500.00,
-      comisionEvaluacion: 265.00,
       cok: 0.10,
+      evaluacionSeguroExterno: 245,
     },
     limits: {
       minVehiclePrice: 5000,

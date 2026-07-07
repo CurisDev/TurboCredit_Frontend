@@ -12,11 +12,11 @@ export interface SimulatorInputs {
   residualPercentage: number; // e.g. 40
   seguroDesgravamenRate: number; // e.g. 0.05 (%)
   seguroVehicularMonthly: number; // e.g. 150
-  portes: number; // e.g. 15
-  gastosAdministrativos: number; // e.g. 30
-  comisionDesembolso: number; // e.g. 500
-  comisionEvaluacion: number; // e.g. 265
-  cok: number; // e.g. 10.0 (%) - COK anual
+  physicalShipping: boolean; // ¿Desea envío físico? Si es true, se cobran portes
+  portes: number; // 0 si no hay envío físico, 15 si lo hay
+  gpsPrice: number; // Precio del GPS (S/.), entre 1000 y 5000
+  evaluacionSeguroExterno: number; // S/ 265 o 0
+  cok: number; // e.g. 10.0 (%) - COK anual (dato del cliente)
 }
 
 export interface ScheduleItem {
@@ -29,7 +29,6 @@ export interface ScheduleItem {
   lifeInsurance: number; // seguro desgravamen
   vehicularInsurance: number;
   portes: number;
-  administrationFee: number;
   totalInstallment: number; // cuota total
   remainingBalance: number;
   isGracePeriod: boolean;
@@ -48,9 +47,7 @@ export interface SimulatorResult {
   schedule: ScheduleItem[];
 }
 
-const round = (value: number): number => {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-};
+
 
 export const vehicleCreditCalculator = {
   calculate: (inputs: SimulatorInputs): SimulatorResult => {
@@ -72,15 +69,15 @@ export const vehicleCreditCalculator = {
     const l_g = isTotalGrace ? loanAmount * Math.pow(1 + tem, g) : loanAmount;
 
     // 2. Cuota residual (Valor Residuo): VF = precioVehiculo * residualPct / 100
-    const residualValue = round(inputs.vehiclePrice * (inputs.residualPercentage / 100));
+    const residualValue = inputs.vehiclePrice * (inputs.residualPercentage / 100);
 
     // 3. Principal ajustado para calcular cuota: L_adj = L_g - VF / (1 + TEM)^n
     const l_adj = l_g - (residualValue / Math.pow(1 + tem, n));
 
     // 4. Calcular cuota mensual fija (C)
     const fixedInstallment = tem === 0
-      ? round(l_adj / n)
-      : round(l_adj * (tem * Math.pow(1 + tem, n)) / (Math.pow(1 + tem, n) - 1));
+      ? l_adj / n
+      : l_adj * (tem * Math.pow(1 + tem, n)) / (Math.pow(1 + tem, n) - 1);
 
     // 5. Generar cronograma
     let remainingBalance = loanAmount;
@@ -95,7 +92,7 @@ export const vehicleCreditCalculator = {
     // Períodos de gracia (Total o Parcial)
     for (let period = 1; period <= g; period++) {
       const beginningBalance = remainingBalance;
-      const interest = round(beginningBalance * tem);
+      const interest = beginningBalance * tem;
       const amortization = 0;
 
       let installment: number;
@@ -105,14 +102,13 @@ export const vehicleCreditCalculator = {
       } else {
         // Gracia total: no se paga nada; el interés se capitaliza en el saldo deudor
         installment = 0;
-        remainingBalance = round(remainingBalance + interest);
+        remainingBalance = remainingBalance + interest;
       }
 
-      const lifeInsurance = round(remainingBalance * desgravamenRateDec); // sobre saldo del periodo
-      const vehicularInsurance = inputs.seguroVehicularMonthly;
+      const lifeInsurance = remainingBalance * desgravamenRateDec; // sobre saldo del periodo
+      const vehicularInsurance = inputs.evaluacionSeguroExterno > 0 ? 0 : inputs.seguroVehicularMonthly;
       const portes = inputs.portes;
-      const adminFee = inputs.gastosAdministrativos;
-      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes + adminFee);
+      const totalInstallment = installment + lifeInsurance + vehicularInsurance + portes;
 
       const dueDate = new Date(today);
       dueDate.setMonth(today.getMonth() + period);
@@ -120,16 +116,15 @@ export const vehicleCreditCalculator = {
       schedule.push({
         period,
         dueDate: dueDate.toLocaleDateString('es-PE'),
-        beginningBalance: round(beginningBalance),
-        interest: round(interest),
-        amortization: round(amortization),
-        installment: round(installment),
-        lifeInsurance: round(lifeInsurance),
-        vehicularInsurance: round(vehicularInsurance),
-        portes: round(portes),
-        administrationFee: round(adminFee),
-        totalInstallment: round(totalInstallment),
-        remainingBalance: round(remainingBalance),
+        beginningBalance: beginningBalance,
+        interest: interest,
+        amortization: amortization,
+        installment: installment,
+        lifeInsurance: lifeInsurance,
+        vehicularInsurance: vehicularInsurance,
+        portes: portes,
+        totalInstallment: totalInstallment,
+        remainingBalance: remainingBalance,
         isGracePeriod: true,
       });
 
@@ -139,24 +134,23 @@ export const vehicleCreditCalculator = {
     // Períodos normales
     for (let period = g + 1; period <= inputs.termMonths; period++) {
       const beginningBalance = remainingBalance;
-      const interest = round(beginningBalance * tem);
+      const interest = beginningBalance * tem;
       let installment = fixedInstallment;
-      let amortization = round(installment - interest);
+      let amortization = installment - interest;
 
       if (period === inputs.termMonths) {
         // En el último mes, se liquida la deuda (incluido el valor residual)
         amortization = beginningBalance;
-        installment = round(amortization + interest);
+        installment = amortization + interest;
         remainingBalance = 0;
       } else {
-        remainingBalance = round(remainingBalance - amortization);
+        remainingBalance = remainingBalance - amortization;
       }
 
-      const lifeInsurance = round(beginningBalance * desgravamenRateDec); // seguro sobre saldo inicial deudor del mes
-      const vehicularInsurance = inputs.seguroVehicularMonthly;
+      const lifeInsurance = beginningBalance * desgravamenRateDec; // seguro sobre saldo inicial deudor del mes
+      const vehicularInsurance = inputs.evaluacionSeguroExterno > 0 ? 0 : inputs.seguroVehicularMonthly;
       const portes = inputs.portes;
-      const adminFee = inputs.gastosAdministrativos;
-      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes + adminFee);
+      const totalInstallment = installment + lifeInsurance + vehicularInsurance + portes;
 
       const dueDate = new Date(today);
       dueDate.setMonth(today.getMonth() + period);
@@ -164,16 +158,15 @@ export const vehicleCreditCalculator = {
       schedule.push({
         period,
         dueDate: dueDate.toLocaleDateString('es-PE'),
-        beginningBalance: round(beginningBalance),
-        interest: round(interest),
-        amortization: round(amortization),
-        installment: round(installment),
-        lifeInsurance: round(lifeInsurance),
-        vehicularInsurance: round(vehicularInsurance),
-        portes: round(portes),
-        administrationFee: round(adminFee),
-        totalInstallment: round(totalInstallment),
-        remainingBalance: round(remainingBalance),
+        beginningBalance: beginningBalance,
+        interest: interest,
+        amortization: amortization,
+        installment: installment,
+        lifeInsurance: lifeInsurance,
+        vehicularInsurance: vehicularInsurance,
+        portes: portes,
+        totalInstallment: totalInstallment,
+        remainingBalance: remainingBalance,
         isGracePeriod: false,
       });
 
@@ -181,8 +174,9 @@ export const vehicleCreditCalculator = {
     }
 
     // 6. Calcular VAN, TIR, TCEA
-    // Inversión Inicial (desde el punto de vista del deudor): Préstamo recibido menos comisiones iniciales
-    const initialInflow = loanAmount - inputs.comisionDesembolso - inputs.comisionEvaluacion;
+    // Inversión Inicial (desde el punto de vista del deudor): Préstamo recibido menos comisiones
+    // iniciales y el costo único de instalación del GPS.
+    const initialInflow = loanAmount - inputs.evaluacionSeguroExterno - (inputs.gpsPrice || 0);
 
     const flows: number[] = [initialInflow];
     for (const item of schedule) {
@@ -200,18 +194,18 @@ export const vehicleCreditCalculator = {
     const cokMonthly = Math.pow(1 + cokAnnualDec, 1 / 12) - 1;
     const npv = vehicleCreditCalculator.calculateNPV(flows, cokMonthly);
 
-    const totalPaid = round(schedule.reduce((sum, item) => sum + item.totalInstallment, 0));
+    const totalPaid = schedule.reduce((sum, item) => sum + item.totalInstallment, 0);
 
     return {
       loanAmount,
-      principalFinanced: round(l_g),
+      principalFinanced: l_g,
       fixedInstallment,
       residualValue,
-      totalInterestPaid: round(totalInterestPaid),
+      totalInterestPaid: totalInterestPaid,
       totalPaid,
-      npv: round(npv),
-      irr: round(irrMonthly * 100),
-      tcea: round(tcea * 100),
+      npv: npv,
+      irr: irrMonthly * 100,
+      tcea: tcea * 100,
       schedule,
     };
   },

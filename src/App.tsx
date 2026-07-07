@@ -12,6 +12,7 @@ import { ProfileForm } from './modules/iam/components/ProfileForm';
 // Loans
 import { BankSelector } from './modules/loans/components/BankSelector';
 import { VehicleForm } from './modules/loans/components/VehicleForm';
+import { ClientForm } from './modules/loans/components/ClientForm';
 import { FinancialForm } from './modules/loans/components/FinancialForm';
 import { MetricsPanel } from './modules/loans/components/MetricsPanel';
 import { ScheduleTable } from './modules/loans/components/ScheduleTable';
@@ -71,10 +72,10 @@ export default function App() {
     residualPercentage: 40,
     seguroDesgravamenRate: 0.050,
     seguroVehicularMonthly: 150,
-    portes: 15,
-    gastosAdministrativos: 30,
-    comisionDesembolso: 500,
-    comisionEvaluacion: 265,
+    physicalShipping: false,
+    portes: 0,
+    gpsPrice: 1000,
+    evaluacionSeguroExterno: 245,
     cok: 10.0,
   });
 
@@ -170,17 +171,18 @@ export default function App() {
         downPayment: roundValue(prev.vehiclePrice * (downPaymentPct / 100)),
       };
 
-      // Solo los bancos predefinidos imponen tasas/seguros/comisiones
+      // Solo los bancos predefinidos imponen tasas/seguros/comisiones.
+      // Los portes dependen de si el cliente pide envío físico (no los fija el banco) y el
+      // COK es un dato del cliente (el banco no lo cobra), por lo que no se sobrescriben aquí.
       if (selectedBankId !== 'custom') {
         const p = bank.config;
         next.tea = p.tea * 100;
         next.seguroDesgravamenRate = p.seguroDesgravamenRate * 100;
         next.seguroVehicularMonthly = p.seguroVehicularMonthly;
-        next.portes = p.portes;
-        next.gastosAdministrativos = p.gastosAdministrativos;
-        next.comisionDesembolso = p.comisionDesembolso;
-        next.comisionEvaluacion = p.comisionEvaluacion;
-        next.cok = p.cok * 100;
+        if (prev.evaluacionSeguroExterno > 0) {
+          next.evaluacionSeguroExterno = p.evaluacionSeguroExterno;
+        }
+
       }
 
       return next;
@@ -275,13 +277,13 @@ export default function App() {
         setSaveStatus({ type: 'success', message: 'Simulación guardada exitosamente.' });
       }
       loadHistory();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error al guardar en base de datos:', err);
       
       if (isBackendConnected) {
         setSaveStatus({ 
           type: 'error', 
-          message: 'Error de validación del Crédito en el servidor. Verifique si se incumplen las políticas de riesgo del banco (LTV > 90%, Cuota inicial < 10% del precio, o Relación Cuota/Ingreso > 40%).' 
+          message: err.message || 'Error de validación del Crédito en el servidor.' 
         });
       } else {
         // Fallback localstorage (scoped por cuenta/email)
@@ -314,9 +316,8 @@ export default function App() {
           seguroDesgravamenRate: inputs.seguroDesgravamenRate,
           seguroVehicularMonthly: inputs.seguroVehicularMonthly,
           portes: inputs.portes,
-          gastosAdministrativos: inputs.gastosAdministrativos,
-          comisionDesembolso: inputs.comisionDesembolso,
-          comisionEvaluacion: inputs.comisionEvaluacion,
+          gpsPrice: inputs.gpsPrice,
+          evaluacionSeguroExterno: inputs.evaluacionSeguroExterno,
           cok: inputs.cok,
           createdAt: new Date().toISOString()
         };
@@ -354,10 +355,10 @@ export default function App() {
       residualPercentage: sim.residualPercentage || 40,
       seguroDesgravamenRate: sim.seguroDesgravamenRate || 0.05,
       seguroVehicularMonthly: sim.seguroVehicularMonthly || 150,
-      portes: sim.portes || 15,
-      gastosAdministrativos: sim.gastosAdministrativos || 30,
-      comisionDesembolso: sim.comisionDesembolso || 500,
-      comisionEvaluacion: sim.comisionEvaluacion || 265,
+      physicalShipping: (sim.portes ?? 0) > 0,
+      portes: sim.portes ?? 0,
+      gpsPrice: sim.gpsPrice || 1000,
+      evaluacionSeguroExterno: sim.evaluacionSeguroExterno || 0,
       cok: sim.cok || 10.0,
     });
 
@@ -570,6 +571,10 @@ export default function App() {
                           inputs={inputs}
                           onChangeInputs={setInputs}
                         />
+                        <ClientForm
+                          inputs={inputs}
+                          onChangeInputs={setInputs}
+                        />
                       </div>
                       <FinancialForm
                         inputs={inputs}
@@ -577,6 +582,7 @@ export default function App() {
                         onSelectCustomBank={() => setSelectedBankId('custom')}
                         limits={bankLimits}
                         errors={simulationErrors}
+                        externalInsuranceCost={selectedBank.config.evaluacionSeguroExterno}
                       />
                     </div>
 

@@ -26,9 +26,8 @@ const buildPayload = (inputs: SimulatorInputs, bankName: string, results?: Simul
   seguroDesgravamenRate: inputs.seguroDesgravamenRate,
   seguroVehicularMonthly: inputs.seguroVehicularMonthly,
   portes: inputs.portes,
-  gastosAdministrativos: inputs.gastosAdministrativos,
-  comisionDesembolso: inputs.comisionDesembolso,
-  comisionEvaluacion: inputs.comisionEvaluacion,
+  gpsPrice: inputs.gpsPrice,
+  evaluacionSeguroExterno: inputs.evaluacionSeguroExterno,
   cok: inputs.cok,
   // Resultados calculados en el frontend (el backend los persiste tal cual)
   ...(results ? {
@@ -55,7 +54,9 @@ export const loanService = {
     });
 
     if (!response.ok) {
-      throw new Error('Error al guardar la simulación en el servidor.');
+      const errText = await response.text();
+      console.error('Backend validation error response:', errText);
+      throw new Error(`Error del servidor: ${errText}`);
     }
 
     return response.json(); // Retorna el VehicleCreditResource guardado

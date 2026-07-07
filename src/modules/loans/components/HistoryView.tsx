@@ -68,10 +68,10 @@ export function HistoryView({
       residualPercentage: sim.residualPercentage ?? 0,
       seguroDesgravamenRate: sim.seguroDesgravamenRate ?? 0,
       seguroVehicularMonthly: sim.seguroVehicularMonthly ?? 0,
+      physicalShipping: (sim.portes ?? 0) > 0,
       portes: sim.portes ?? 0,
-      gastosAdministrativos: sim.gastosAdministrativos ?? 0,
-      comisionDesembolso: sim.comisionDesembolso ?? 0,
-      comisionEvaluacion: sim.comisionEvaluacion ?? 0,
+      gpsPrice: sim.gpsPrice ?? 1000,
+      evaluacionSeguroExterno: sim.evaluacionSeguroExterno ?? 0,
       cok: sim.cok ?? 0,
     };
 
@@ -129,7 +129,7 @@ export function HistoryView({
           money(item.installment),
           money(item.lifeInsurance),
           money(item.vehicularInsurance),
-          money(item.portes + item.administrationFee),
+          money(item.portes),
           money(item.totalInstallment),
           money(item.remainingBalance),
         ]),

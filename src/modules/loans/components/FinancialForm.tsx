@@ -10,9 +10,10 @@ interface FinancialFormProps {
   onSelectCustomBank: () => void;
   limits: BankLimits;
   errors: string[];
+  externalInsuranceCost: number;
 }
 
-export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limits, errors }: FinancialFormProps) {
+export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limits, errors, externalInsuranceCost }: FinancialFormProps) {
   const round = (val: number): number => Math.round(val * 100) / 100;
 
   const handlePriceChange = (price: number) => {
@@ -168,20 +169,37 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
         </div>
 
         <div className="form-group">
-          <label htmlFor="grace-months" className="text-label-bold" style={{ fontSize: '11px' }}>
-            Meses de Gracia
+          <label htmlFor="grace-type" className="text-label-bold flex items-center gap-1.5" style={{ fontSize: '11px' }}>
+            Tipo de Gracia
+            <span
+              title="Sin gracia: pagas la cuota completa desde el primer mes. Gracia Parcial: pagas solo el interés durante los meses de gracia (el capital no varía). Gracia Total: no pagas nada y el interés se capitaliza (aumenta la deuda)."
+              className="cursor-help flex items-center"
+            >
+              <Info className="text-outline" style={{ width: '14px', height: '14px' }} />
+            </span>
           </label>
           <div className="luminous-input">
             <select
-              id="grace-months"
-              value={inputs.gracePeriodMonths}
-              onChange={(e) => onChangeInputs(prev => ({ ...prev, gracePeriodMonths: Number(e.target.value) }))}
+              id="grace-type"
+              value={inputs.gracePeriodMonths > 0 ? inputs.gracePeriodType : 'NONE'}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === 'NONE') {
+                  onChangeInputs(prev => ({ ...prev, gracePeriodMonths: 0 }));
+                } else {
+                  onChangeInputs(prev => ({
+                    ...prev,
+                    gracePeriodType: v as 'TOTAL' | 'PARTIAL',
+                    // Al elegir un tipo de gracia, se activa con 1 mes por defecto
+                    gracePeriodMonths: prev.gracePeriodMonths > 0 ? prev.gracePeriodMonths : 1,
+                  }));
+                }
+              }}
               style={{ width: '100%' }}
             >
-              <option value={0}>Sin gracia</option>
-              {Array.from({ length: limits.maxGraceMonths }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>{m} {m === 1 ? 'mes' : 'meses'}</option>
-              ))}
+              <option value="NONE">Sin gracia</option>
+              <option value="PARTIAL">Gracia Parcial</option>
+              <option value="TOTAL">Gracia Total</option>
             </select>
           </div>
         </div>
@@ -199,13 +217,13 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
         />
       </div>
 
-      {/* Tipo de periodo de gracia (solo si hay meses de gracia) */}
+      {/* Meses de gracia: solo si se eligió un tipo de gracia (Parcial o Total) */}
       {inputs.gracePeriodMonths > 0 && (
         <div className="form-group">
-          <label htmlFor="grace-type" className="text-label-bold flex items-center gap-1.5" style={{ fontSize: '11px' }}>
-            Tipo de Periodo de Gracia
+          <label htmlFor="grace-months" className="text-label-bold flex items-center gap-1.5" style={{ fontSize: '11px' }}>
+            Meses de Gracia
             <span
-              title="Gracia Total: no se paga nada y el interés se capitaliza (aumenta la deuda). Gracia Parcial: se paga solo el interés y el capital no varía."
+              title="Cantidad de meses del periodo de gracia. El máximo permitido depende de la entidad seleccionada."
               className="cursor-help flex items-center"
             >
               <Info className="text-outline" style={{ width: '14px', height: '14px' }} />
@@ -213,15 +231,21 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
           </label>
           <div className="luminous-input">
             <select
-              id="grace-type"
-              value={inputs.gracePeriodType}
-              onChange={(e) => onChangeInputs(prev => ({ ...prev, gracePeriodType: e.target.value as 'TOTAL' | 'PARTIAL' }))}
+              id="grace-months"
+              value={inputs.gracePeriodMonths}
+              onChange={(e) => onChangeInputs(prev => ({ ...prev, gracePeriodMonths: Number(e.target.value) }))}
               style={{ width: '100%' }}
             >
-              <option value="TOTAL">Gracia Total (capitaliza el interés)</option>
-              <option value="PARTIAL">Gracia Parcial (paga solo el interés)</option>
+              {Array.from({ length: limits.maxGraceMonths }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>{m} {m === 1 ? 'mes' : 'meses'}</option>
+              ))}
             </select>
           </div>
+          <span className="text-outline text-xs mt-1">
+            {inputs.gracePeriodType === 'TOTAL'
+              ? 'No pagas nada estos meses; el interés se capitaliza y aumenta la deuda.'
+              : 'Pagas solo el interés estos meses; el capital no varía.'}
+          </span>
         </div>
       )}
 
@@ -248,7 +272,8 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
             id="seguro-vehicular"
             label="Seg. Vehicular Mensual (S/.)"
             type="number"
-            value={inputs.seguroVehicularMonthly}
+            value={inputs.evaluacionSeguroExterno > 0 ? 0 : inputs.seguroVehicularMonthly}
+            disabled={inputs.evaluacionSeguroExterno > 0}
             onChange={(e) => {
               onChangeInputs(prev => ({ ...prev, seguroVehicularMonthly: Number(e.target.value) }));
               onSelectCustomBank();
@@ -256,60 +281,84 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <Input
-            id="portes"
-            label="Portes (S/.)"
-            type="number"
-            value={inputs.portes}
-            onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, portes: Number(e.target.value) }));
-              onSelectCustomBank();
-            }}
-          />
+        <div className="grid grid-cols-1 gap-4">
 
           <Input
-            id="gastos-adm"
-            label="Gasto Adm. (S/.)"
+            id="gps-price"
+            label="Precio del GPS (S/.)"
             type="number"
-            value={inputs.gastosAdministrativos}
+            min={1000}
+            max={5000}
+            step="50"
+            value={inputs.gpsPrice}
             onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, gastosAdministrativos: Number(e.target.value) }));
-              onSelectCustomBank();
+              // Permite escribir libremente; el rango se ajusta al perder el foco
+              onChangeInputs(prev => ({ ...prev, gpsPrice: Number(e.target.value) }));
             }}
-          />
-
-          <Input
-            id="cok-value"
-            label="COK Anual (%)"
-            type="number"
-            step="0.1"
-            value={inputs.cok}
-            onChange={(e) => onChangeInputs(prev => ({ ...prev, cok: Number(e.target.value) }))}
+            onBlur={(e) => {
+              const raw = Number(e.target.value);
+              // Evita valores irreales: se limita al rango permitido [1000, 5000]
+              const clamped = Math.min(5000, Math.max(1000, isNaN(raw) ? 1000 : raw));
+              onChangeInputs(prev => ({ ...prev, gpsPrice: clamped }));
+            }}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            id="comision-desembolso"
-            label="Comisión Desembolso (S/.)"
-            type="number"
-            value={inputs.comisionDesembolso}
+        {/* Portes: solo se cobran (S/. 15) si el cliente elige envío físico */}
+        <label
+          htmlFor="physical-shipping"
+          className="flex items-center gap-3 cursor-pointer p-3 rounded-xl"
+          style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}
+        >
+          <input
+            id="physical-shipping"
+            type="checkbox"
+            checked={inputs.physicalShipping}
             onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, comisionDesembolso: Number(e.target.value) }));
-              onSelectCustomBank();
+              const checked = e.target.checked;
+              onChangeInputs(prev => ({ ...prev, physicalShipping: checked, portes: checked ? 15 : 0 }));
             }}
+            className="cursor-pointer"
+            style={{ width: '18px', height: '18px' }}
           />
+          <span className="flex flex-col">
+            <span className="text-white text-sm font-bold">¿Desea envío físico?</span>
+            <span className="text-outline text-xs">
+              {inputs.physicalShipping ? 'Portes: S/. 15.00 mensuales' : 'Sin costo de portes (S/. 0.00)'}
+            </span>
+          </span>
+        </label>
 
+        <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <span className="text-white text-sm font-bold">Tipo de Seguro</span>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center gap-2 cursor-pointer text-outline text-sm">
+              <input 
+                type="radio" 
+                name="insuranceType" 
+                checked={inputs.evaluacionSeguroExterno === 0 || !inputs.evaluacionSeguroExterno}
+                onChange={() => onChangeInputs(prev => ({ ...prev, evaluacionSeguroExterno: 0 }))} 
+              />
+              Seguro del Banco
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-outline text-sm">
+              <input 
+                type="radio" 
+                name="insuranceType" 
+                checked={inputs.evaluacionSeguroExterno > 0}
+                onChange={() => onChangeInputs(prev => ({ ...prev, evaluacionSeguroExterno: externalInsuranceCost }))} 
+              />
+              Seguro Externo
+            </label>
+          </div>
+          
           <Input
-            id="comision-evaluacion"
-            label="Comisión Evaluación (S/.)"
+            id="evaluacion-seguro-externo"
+            label="Evaluación de Seguro Externo (S/.)"
             type="number"
-            value={inputs.comisionEvaluacion}
-            onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, comisionEvaluacion: Number(e.target.value) }));
-              onSelectCustomBank();
-            }}
+            value={inputs.evaluacionSeguroExterno || 0}
+            disabled
+            onChange={() => {}}
           />
         </div>
       </div>
