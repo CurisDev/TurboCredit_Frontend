@@ -143,7 +143,7 @@ export const bankConfigurations: Bank[] = [
       minDownPaymentPct: 25,
       maxDownPaymentPct: 50,
       terms: [24, 36, 48],
-      maxGraceMonths: 3,
+      maxGraceMonths: 2, // Personas naturales: hasta 60 días (2 meses)
       minResidualPct: 30,
       maxResidualPct: 50,
     },

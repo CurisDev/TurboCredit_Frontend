@@ -169,20 +169,37 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
         </div>
 
         <div className="form-group">
-          <label htmlFor="grace-months" className="text-label-bold" style={{ fontSize: '11px' }}>
-            Meses de Gracia
+          <label htmlFor="grace-type" className="text-label-bold flex items-center gap-1.5" style={{ fontSize: '11px' }}>
+            Tipo de Gracia
+            <span
+              title="Sin gracia: pagas la cuota completa desde el primer mes. Gracia Parcial: pagas solo el interés durante los meses de gracia (el capital no varía). Gracia Total: no pagas nada y el interés se capitaliza (aumenta la deuda)."
+              className="cursor-help flex items-center"
+            >
+              <Info className="text-outline" style={{ width: '14px', height: '14px' }} />
+            </span>
           </label>
           <div className="luminous-input">
             <select
-              id="grace-months"
-              value={inputs.gracePeriodMonths}
-              onChange={(e) => onChangeInputs(prev => ({ ...prev, gracePeriodMonths: Number(e.target.value) }))}
+              id="grace-type"
+              value={inputs.gracePeriodMonths > 0 ? inputs.gracePeriodType : 'NONE'}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === 'NONE') {
+                  onChangeInputs(prev => ({ ...prev, gracePeriodMonths: 0 }));
+                } else {
+                  onChangeInputs(prev => ({
+                    ...prev,
+                    gracePeriodType: v as 'TOTAL' | 'PARTIAL',
+                    // Al elegir un tipo de gracia, se activa con 1 mes por defecto
+                    gracePeriodMonths: prev.gracePeriodMonths > 0 ? prev.gracePeriodMonths : 1,
+                  }));
+                }
+              }}
               style={{ width: '100%' }}
             >
-              <option value={0}>Sin gracia</option>
-              {Array.from({ length: limits.maxGraceMonths }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>{m} {m === 1 ? 'mes' : 'meses'}</option>
-              ))}
+              <option value="NONE">Sin gracia</option>
+              <option value="PARTIAL">Gracia Parcial</option>
+              <option value="TOTAL">Gracia Total</option>
             </select>
           </div>
         </div>
@@ -200,13 +217,13 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
         />
       </div>
 
-      {/* Tipo de periodo de gracia (solo si hay meses de gracia) */}
+      {/* Meses de gracia: solo si se eligió un tipo de gracia (Parcial o Total) */}
       {inputs.gracePeriodMonths > 0 && (
         <div className="form-group">
-          <label htmlFor="grace-type" className="text-label-bold flex items-center gap-1.5" style={{ fontSize: '11px' }}>
-            Tipo de Periodo de Gracia
+          <label htmlFor="grace-months" className="text-label-bold flex items-center gap-1.5" style={{ fontSize: '11px' }}>
+            Meses de Gracia
             <span
-              title="Gracia Total: no se paga nada y el interés se capitaliza (aumenta la deuda). Gracia Parcial: se paga solo el interés y el capital no varía."
+              title="Cantidad de meses del periodo de gracia. El máximo permitido depende de la entidad seleccionada."
               className="cursor-help flex items-center"
             >
               <Info className="text-outline" style={{ width: '14px', height: '14px' }} />
@@ -214,15 +231,21 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
           </label>
           <div className="luminous-input">
             <select
-              id="grace-type"
-              value={inputs.gracePeriodType}
-              onChange={(e) => onChangeInputs(prev => ({ ...prev, gracePeriodType: e.target.value as 'TOTAL' | 'PARTIAL' }))}
+              id="grace-months"
+              value={inputs.gracePeriodMonths}
+              onChange={(e) => onChangeInputs(prev => ({ ...prev, gracePeriodMonths: Number(e.target.value) }))}
               style={{ width: '100%' }}
             >
-              <option value="TOTAL">Gracia Total (capitaliza el interés)</option>
-              <option value="PARTIAL">Gracia Parcial (paga solo el interés)</option>
+              {Array.from({ length: limits.maxGraceMonths }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>{m} {m === 1 ? 'mes' : 'meses'}</option>
+              ))}
             </select>
           </div>
+          <span className="text-outline text-xs mt-1">
+            {inputs.gracePeriodType === 'TOTAL'
+              ? 'No pagas nada estos meses; el interés se capitaliza y aumenta la deuda.'
+              : 'Pagas solo el interés estos meses; el capital no varía.'}
+          </span>
         </div>
       )}
 
