@@ -74,10 +74,8 @@ export default function App() {
     seguroVehicularMonthly: 150,
     physicalShipping: false,
     portes: 0,
-    gastosAdministrativos: 30,
     gpsPrice: 1000,
-    comisionDesembolso: 500,
-    comisionEvaluacion: 265,
+    evaluacionSeguroExterno: 245,
     cok: 10.0,
   });
 
@@ -181,9 +179,10 @@ export default function App() {
         next.tea = p.tea * 100;
         next.seguroDesgravamenRate = p.seguroDesgravamenRate * 100;
         next.seguroVehicularMonthly = p.seguroVehicularMonthly;
-        next.gastosAdministrativos = p.gastosAdministrativos;
-        next.comisionDesembolso = p.comisionDesembolso;
-        next.comisionEvaluacion = p.comisionEvaluacion;
+        if (prev.evaluacionSeguroExterno > 0) {
+          next.evaluacionSeguroExterno = p.evaluacionSeguroExterno;
+        }
+
       }
 
       return next;
@@ -278,13 +277,13 @@ export default function App() {
         setSaveStatus({ type: 'success', message: 'Simulación guardada exitosamente.' });
       }
       loadHistory();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error al guardar en base de datos:', err);
       
       if (isBackendConnected) {
         setSaveStatus({ 
           type: 'error', 
-          message: 'Error de validación del Crédito en el servidor. Verifique si se incumplen las políticas de riesgo del banco (LTV > 90%, Cuota inicial < 10% del precio, o Relación Cuota/Ingreso > 40%).' 
+          message: err.message || 'Error de validación del Crédito en el servidor.' 
         });
       } else {
         // Fallback localstorage (scoped por cuenta/email)
@@ -317,10 +316,8 @@ export default function App() {
           seguroDesgravamenRate: inputs.seguroDesgravamenRate,
           seguroVehicularMonthly: inputs.seguroVehicularMonthly,
           portes: inputs.portes,
-          gastosAdministrativos: inputs.gastosAdministrativos,
           gpsPrice: inputs.gpsPrice,
-          comisionDesembolso: inputs.comisionDesembolso,
-          comisionEvaluacion: inputs.comisionEvaluacion,
+          evaluacionSeguroExterno: inputs.evaluacionSeguroExterno,
           cok: inputs.cok,
           createdAt: new Date().toISOString()
         };
@@ -360,10 +357,8 @@ export default function App() {
       seguroVehicularMonthly: sim.seguroVehicularMonthly || 150,
       physicalShipping: (sim.portes ?? 0) > 0,
       portes: sim.portes ?? 0,
-      gastosAdministrativos: sim.gastosAdministrativos || 30,
       gpsPrice: sim.gpsPrice || 1000,
-      comisionDesembolso: sim.comisionDesembolso || 500,
-      comisionEvaluacion: sim.comisionEvaluacion || 265,
+      evaluacionSeguroExterno: sim.evaluacionSeguroExterno || 0,
       cok: sim.cok || 10.0,
     });
 
@@ -587,6 +582,7 @@ export default function App() {
                         onSelectCustomBank={() => setSelectedBankId('custom')}
                         limits={bankLimits}
                         errors={simulationErrors}
+                        externalInsuranceCost={selectedBank.config.evaluacionSeguroExterno}
                       />
                     </div>
 

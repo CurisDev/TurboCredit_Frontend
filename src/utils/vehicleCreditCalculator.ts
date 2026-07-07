@@ -14,10 +14,8 @@ export interface SimulatorInputs {
   seguroVehicularMonthly: number; // e.g. 150
   physicalShipping: boolean; // ¿Desea envío físico? Si es true, se cobran portes
   portes: number; // 0 si no hay envío físico, 15 si lo hay
-  gastosAdministrativos: number; // e.g. 30
   gpsPrice: number; // Precio del GPS (S/.), entre 1000 y 5000
-  comisionDesembolso: number; // e.g. 500
-  comisionEvaluacion: number; // e.g. 265
+  evaluacionSeguroExterno: number; // S/ 265 o 0
   cok: number; // e.g. 10.0 (%) - COK anual (dato del cliente)
 }
 
@@ -31,7 +29,6 @@ export interface ScheduleItem {
   lifeInsurance: number; // seguro desgravamen
   vehicularInsurance: number;
   portes: number;
-  administrationFee: number;
   totalInstallment: number; // cuota total
   remainingBalance: number;
   isGracePeriod: boolean;
@@ -111,10 +108,9 @@ export const vehicleCreditCalculator = {
       }
 
       const lifeInsurance = round(remainingBalance * desgravamenRateDec); // sobre saldo del periodo
-      const vehicularInsurance = inputs.seguroVehicularMonthly;
+      const vehicularInsurance = inputs.evaluacionSeguroExterno > 0 ? 0 : inputs.seguroVehicularMonthly;
       const portes = inputs.portes;
-      const adminFee = inputs.gastosAdministrativos;
-      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes + adminFee);
+      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes);
 
       const dueDate = new Date(today);
       dueDate.setMonth(today.getMonth() + period);
@@ -129,7 +125,6 @@ export const vehicleCreditCalculator = {
         lifeInsurance: round(lifeInsurance),
         vehicularInsurance: round(vehicularInsurance),
         portes: round(portes),
-        administrationFee: round(adminFee),
         totalInstallment: round(totalInstallment),
         remainingBalance: round(remainingBalance),
         isGracePeriod: true,
@@ -155,10 +150,9 @@ export const vehicleCreditCalculator = {
       }
 
       const lifeInsurance = round(beginningBalance * desgravamenRateDec); // seguro sobre saldo inicial deudor del mes
-      const vehicularInsurance = inputs.seguroVehicularMonthly;
+      const vehicularInsurance = inputs.evaluacionSeguroExterno > 0 ? 0 : inputs.seguroVehicularMonthly;
       const portes = inputs.portes;
-      const adminFee = inputs.gastosAdministrativos;
-      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes + adminFee);
+      const totalInstallment = round(installment + lifeInsurance + vehicularInsurance + portes);
 
       const dueDate = new Date(today);
       dueDate.setMonth(today.getMonth() + period);
@@ -173,7 +167,6 @@ export const vehicleCreditCalculator = {
         lifeInsurance: round(lifeInsurance),
         vehicularInsurance: round(vehicularInsurance),
         portes: round(portes),
-        administrationFee: round(adminFee),
         totalInstallment: round(totalInstallment),
         remainingBalance: round(remainingBalance),
         isGracePeriod: false,
@@ -185,7 +178,7 @@ export const vehicleCreditCalculator = {
     // 6. Calcular VAN, TIR, TCEA
     // Inversión Inicial (desde el punto de vista del deudor): Préstamo recibido menos comisiones
     // iniciales y el costo único de instalación del GPS.
-    const initialInflow = loanAmount - inputs.comisionDesembolso - inputs.comisionEvaluacion - (inputs.gpsPrice || 0);
+    const initialInflow = loanAmount - inputs.evaluacionSeguroExterno - (inputs.gpsPrice || 0);
 
     const flows: number[] = [initialInflow];
     for (const item of schedule) {

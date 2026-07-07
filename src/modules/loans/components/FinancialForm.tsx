@@ -10,9 +10,10 @@ interface FinancialFormProps {
   onSelectCustomBank: () => void;
   limits: BankLimits;
   errors: string[];
+  externalInsuranceCost: number;
 }
 
-export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limits, errors }: FinancialFormProps) {
+export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limits, errors, externalInsuranceCost }: FinancialFormProps) {
   const round = (val: number): number => Math.round(val * 100) / 100;
 
   const handlePriceChange = (price: number) => {
@@ -248,7 +249,8 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
             id="seguro-vehicular"
             label="Seg. Vehicular Mensual (S/.)"
             type="number"
-            value={inputs.seguroVehicularMonthly}
+            value={inputs.evaluacionSeguroExterno > 0 ? 0 : inputs.seguroVehicularMonthly}
+            disabled={inputs.evaluacionSeguroExterno > 0}
             onChange={(e) => {
               onChangeInputs(prev => ({ ...prev, seguroVehicularMonthly: Number(e.target.value) }));
               onSelectCustomBank();
@@ -256,17 +258,7 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            id="gastos-adm"
-            label="Gasto Adm. (S/.)"
-            type="number"
-            value={inputs.gastosAdministrativos}
-            onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, gastosAdministrativos: Number(e.target.value) }));
-              onSelectCustomBank();
-            }}
-          />
+        <div className="grid grid-cols-1 gap-4">
 
           <Input
             id="gps-price"
@@ -302,7 +294,6 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
             onChange={(e) => {
               const checked = e.target.checked;
               onChangeInputs(prev => ({ ...prev, physicalShipping: checked, portes: checked ? 15 : 0 }));
-              onSelectCustomBank();
             }}
             className="cursor-pointer"
             style={{ width: '18px', height: '18px' }}
@@ -315,27 +306,36 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
           </span>
         </label>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <span className="text-white text-sm font-bold">Tipo de Seguro</span>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center gap-2 cursor-pointer text-outline text-sm">
+              <input 
+                type="radio" 
+                name="insuranceType" 
+                checked={inputs.evaluacionSeguroExterno === 0 || !inputs.evaluacionSeguroExterno}
+                onChange={() => onChangeInputs(prev => ({ ...prev, evaluacionSeguroExterno: 0 }))} 
+              />
+              Seguro del Banco
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-outline text-sm">
+              <input 
+                type="radio" 
+                name="insuranceType" 
+                checked={inputs.evaluacionSeguroExterno > 0}
+                onChange={() => onChangeInputs(prev => ({ ...prev, evaluacionSeguroExterno: externalInsuranceCost }))} 
+              />
+              Seguro Externo
+            </label>
+          </div>
+          
           <Input
-            id="comision-desembolso"
-            label="Comisión Desembolso (S/.)"
+            id="evaluacion-seguro-externo"
+            label="Evaluación de Seguro Externo (S/.)"
             type="number"
-            value={inputs.comisionDesembolso}
-            onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, comisionDesembolso: Number(e.target.value) }));
-              onSelectCustomBank();
-            }}
-          />
-
-          <Input
-            id="comision-evaluacion"
-            label="Comisión Evaluación (S/.)"
-            type="number"
-            value={inputs.comisionEvaluacion}
-            onChange={(e) => {
-              onChangeInputs(prev => ({ ...prev, comisionEvaluacion: Number(e.target.value) }));
-              onSelectCustomBank();
-            }}
+            value={inputs.evaluacionSeguroExterno || 0}
+            disabled
+            onChange={() => {}}
           />
         </div>
       </div>

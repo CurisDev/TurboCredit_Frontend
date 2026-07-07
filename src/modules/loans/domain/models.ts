@@ -14,10 +14,8 @@ export interface SimulatorInputs {
   seguroVehicularMonthly: number;
   physicalShipping: boolean; // ¿Desea envío físico? Si es true, se cobran portes
   portes: number; // Costo de portes: 0 si no hay envío físico, 15 si lo hay
-  gastosAdministrativos: number;
   gpsPrice: number; // Precio del GPS (S/.), entre 1000 y 5000
-  comisionDesembolso: number;
-  comisionEvaluacion: number;
+  evaluacionSeguroExterno: number;
   cok: number; // COK anual (%) - Dato del cliente, no del banco
 }
 
@@ -31,7 +29,6 @@ export interface ScheduleItem {
   lifeInsurance: number;
   vehicularInsurance: number;
   portes: number;
-  administrationFee: number;
   totalInstallment: number; // cuota total
   remainingBalance: number;
   isGracePeriod: boolean;
