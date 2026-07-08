@@ -57,15 +57,18 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
       {errors.length > 0 && (
         <div
           className="flex flex-col gap-1 p-3 rounded-xl"
-          style={{ background: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.25)' }}
+          style={{ 
+            background: errors.every(err => err.startsWith("Advertencia:")) ? 'rgba(234, 179, 8, 0.08)' : 'rgba(244, 63, 94, 0.08)', 
+            border: errors.every(err => err.startsWith("Advertencia:")) ? '1px solid rgba(234, 179, 8, 0.25)' : '1px solid rgba(244, 63, 94, 0.25)' 
+          }}
         >
-          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: '#f43f5e' }}>
+          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: errors.every(err => err.startsWith("Advertencia:")) ? '#eab308' : '#f43f5e' }}>
             <AlertTriangle style={{ width: '14px', height: '14px' }} />
-            Revisa las condiciones del banco
+            {errors.every(err => err.startsWith("Advertencia:")) ? 'Advertencia Financiera' : 'Revisa las condiciones del banco'}
           </span>
           <ul className="list-disc pl-5 flex flex-col gap-0.5">
             {errors.map((err, i) => (
-              <li key={i} className="text-xs" style={{ color: '#fda4af' }}>{err}</li>
+              <li key={i} className="text-xs" style={{ color: errors.every(err => err.startsWith("Advertencia:")) ? '#fef08a' : '#fda4af' }}>{err}</li>
             ))}
           </ul>
         </div>
@@ -138,7 +141,6 @@ export function FinancialForm({ inputs, onChangeInputs, onSelectCustomBank, limi
           value={inputs.residualPercentage}
           onChange={(e) => {
             onChangeInputs(prev => ({ ...prev, residualPercentage: Number(e.target.value) }));
-            onSelectCustomBank();
           }}
           className="cursor-pointer"
         />
