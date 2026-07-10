@@ -95,7 +95,10 @@ export default function App() {
   const selectedBank = bankConfigurations.find(b => b.id === selectedBankId) || bankConfigurations[0];
   const bankLimits = selectedBank.limits;
   const simulationErrors = validateSimulation(inputs, bankLimits);
-  const isSimulationValid = simulationErrors.length === 0;
+  if (results && inputs.cok <= results.tcea) {
+    simulationErrors.push(`Advertencia: El COK Anual (${inputs.cok}%) es menor o igual a la TCEA Anual calculada (${results.tcea.toFixed(2)}%). Para obtener un VAN positivo, tu COK debe ser mayor que la TCEA.`);
+  }
+  const isSimulationValid = simulationErrors.filter(e => !e.startsWith("Advertencia:")).length === 0;
 
   // Un id de backend es un entero pequeño; el fallback local usa Date.now() (muy grande)
   const isBackendId = (id: unknown): id is number =>
@@ -176,8 +179,8 @@ export default function App() {
       // COK es un dato del cliente (el banco no lo cobra), por lo que no se sobrescriben aquí.
       if (selectedBankId !== 'custom') {
         const p = bank.config;
-        next.tea = p.tea * 100;
-        next.seguroDesgravamenRate = p.seguroDesgravamenRate * 100;
+        next.tea = Number((p.tea * 100).toFixed(4));
+        next.seguroDesgravamenRate = Number((p.seguroDesgravamenRate * 100).toFixed(4));
         next.seguroVehicularMonthly = p.seguroVehicularMonthly;
         if (prev.evaluacionSeguroExterno > 0) {
           next.evaluacionSeguroExterno = p.evaluacionSeguroExterno;
@@ -357,7 +360,7 @@ export default function App() {
       seguroVehicularMonthly: sim.seguroVehicularMonthly || 150,
       physicalShipping: (sim.portes ?? 0) > 0,
       portes: sim.portes ?? 0,
-      gpsPrice: sim.gpsPrice || 1000,
+      gpsPrice: sim.gpsPrice ?? 1000,
       evaluacionSeguroExterno: sim.evaluacionSeguroExterno || 0,
       cok: sim.cok || 10.0,
     });
